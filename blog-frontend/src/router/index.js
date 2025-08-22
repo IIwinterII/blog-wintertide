@@ -11,7 +11,7 @@ const routes = [
   { path: '/article/:id', name: 'Article', component: Article },
   { path: '/comments', name: 'Comments', component: Comments },  // 添加Comments路由
   { path: '/personal-home', name: 'PersonalHome', component: PersonalHome },  // 添加PersonalHome路由
-  { path: '/article-editor', name: 'ArticleEditor', component: ArticleEditor },  // 添加ArticleEditor路由
+  { path: '/article-editor/:id?', name: 'ArticleEditor', component: ArticleEditor },  // 添加ArticleEditor路由，支持可选的id参数
   { path: '/categories', name: 'Category', component: CategoryPage },  // 添加CategoryPage路由
   { path: '/categories/:tag', name: 'CategoryByTag', component: CategoryPage }  // 添加带标签参数的分类路由
 ]

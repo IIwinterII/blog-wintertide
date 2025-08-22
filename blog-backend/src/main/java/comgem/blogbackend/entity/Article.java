@@ -32,6 +32,9 @@ public class Article {
     @Column(name = "word_count")
     private Integer wordCount;
 
+    @Column(name = "deleted")
+    private Boolean deleted = false;
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -56,4 +59,6 @@ public class Article {
 
     public Integer getWordCount() { return wordCount; }
     public void setWordCount(Integer wordCount) { this.wordCount = wordCount; }
+
 }
+

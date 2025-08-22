@@ -19,35 +19,43 @@
             <p>点击此处或向下滑动</p>
            </div>
           <!-- 文章内容区 -->
-         <div class="content" :class="{'visible': isScrolled && !isContentFaded}">
-        <div class="articles-container">
-       <h2 style="text-align: center; margin-bottom: 30px; font-size: 2.2rem; color: #fff;">精选文章</h2>
+  <div class="content" :class="{'visible': isScrolled && !isContentFaded}">
+    <div class="articles-container">
       <!-- 搜索结果标题 -->
       <div v-if="isSearchActive" class="search-results-header">
         <h2>搜索结果: "{{ searchKeyword }}" ({{ searchResults.length }})</h2>
-        <button class="clear-search" @click="clearSearch"><i class="fas fa-times"></i> 清除搜索</button>
+        <button class="clear-search" @click="clearSearch">
+          <i class="fas fa-times"></i> 清除搜索
+        </button>
       </div>
 
+      <!-- 文章卡片列表 -->
       <div class="articles">
-        <!-- 文章卡片列表：循环渲染文章数据 -->
-       <div class="article-card" v-for="article in articles" :key="article.id" @click="navigateToArticle(article)">
-     <h3>{{ article.title }}</h3>
-     <p>{{ article.description }}</p>
-     <div class="article-meta">
-       <span><i class="far fa-calendar"></i> {{ article.publishDate }}</span>
-       <span><i class="far fa-user"></i> {{ article.author }}</span>
-       <span><i class="far fa-file-alt"></i> {{ article.wordCount || 'N/A' }}字</span>
-     </div>
-     <div class="article-tags">
-       <span v-for="tag in article.tags" :key="tag" class="tag">{{ tag }}</span>
-     </div>
-   </div>
+        <div 
+          v-for="article in (isSearchActive ? searchResults : articles)" 
+          :key="article.id" 
+          class="article-card" 
+          @click="navigateToArticle(article)"
+        >
+          <h3>{{ article.title }}</h3>
+          <p>{{ article.description }}</p>
+          <div class="article-meta">
+            <span><i class="far fa-calendar"></i> {{ article.publishDate }}</span>
+            <span><i class="far fa-user"></i> {{ article.author }}</span>
+            <span><i class="far fa-file-alt"></i> {{ article.wordCount || 'N/A' }}字</span>
+          </div>
+          <div class="article-tags">
+            <span v-for="tag in article.tags" :key="tag" class="tag" @click.stop="filterByTag(tag)">{{ tag }}</span>
+          </div>
+        </div>
+
+        <!-- 无搜索结果提示 -->
         <div v-if="isSearchActive && searchResults.length === 0" class="no-results">
           没有找到匹配的文章
         </div>
       </div>
-     </div>
-      </div>
+    </div>
+  </div>
        </template>
 <script setup>
 import { ref, onMounted, onUnmounted, defineProps, defineEmits, watch, inject } from 'vue';
@@ -56,12 +64,31 @@ import axios from 'axios';
 // 导入API客户端
 import apiClient from '../utils/api.js';
 
+
+
+
+
 const searchResults = inject('searchResults', ref([]));
 const isSearchActive = inject('isSearchActive', ref(false));
 const searchKeyword = inject('searchKeyword', ref(''));
 
 const props = defineProps({ isNight: Boolean });
-const emit = defineEmits(['showLogin', 'showRegister']);
+const clearSearch = inject('clearSearch', () => {});
+
+// 按标签筛选文章
+const filterByTag = (tag) => {
+  // 清除当前搜索
+  clearSearch();
+  // 设置搜索关键词为标签
+  searchKeyword.value = tag;
+  // 执行搜索
+  performSearch();
+}
+
+// 导入performSearch方法
+const performSearch = inject('performSearch', () => {});
+
+
 
 const isShowWelcome = ref(false);
 const isShowIndicator = ref(false);
@@ -73,13 +100,18 @@ const router = useRouter()
 const route = useRoute() // 添加路由实例
   const articles = ref([]);
 
+
+const emit = defineEmits({
+  showLogin: null,
+  showRegister: null
+});
    onMounted(async () => {
      try {
        const response = await apiClient.get('/articles');
-       // 处理tags为null的情况
+       // 处理tags为null的情况，并将tags字符串转为数组
        articles.value = response.data.map(article => ({
          ...article,
-         tags: article.tags || []
+         tags: article.tags ? article.tags.split(' ') : []
        }));
      } catch (error) {
        console.error('加载文章失败:', error);
@@ -90,12 +122,7 @@ const navigateToArticle = (article) => {
   router.push({ name: 'Article', params: { id: article.id } });
 }
 
-// 清除搜索
-const clearSearch = () => {
-  isSearchActive.value = false;
-  searchKeyword.value = '';
-  searchResults.value = [];
-}
+
 
 // 添加滚动到指定文章的函数
 const scrollToArticle = (id) => {
@@ -327,6 +354,58 @@ onUnmounted(() => {
 
 .night-mode .articles-container {
   background: rgba(86, 87, 88, 0.541) !important;
+}
+
+.night-mode .search-results-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.night-mode .clear-search {
+  background: rgba(220, 53, 69, 0.7);
+}
+
+.night-mode .clear-search:hover {
+  background: rgba(220, 53, 69, 0.9);
+}
+
+.search-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.search-results-header h2 {
+  font-size: 1.8rem;
+  margin: 0;
+  color: #fff;
+}
+
+.clear-search {
+  background: rgba(255, 99, 71, 0.7);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s ease;
+}
+
+.clear-search:hover {
+  background: rgba(255, 99, 71, 0.9);
+  transform: translateY(-2px);
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.2rem;
 }
 
 .articles-container {

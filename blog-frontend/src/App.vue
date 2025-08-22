@@ -107,8 +107,8 @@ import { useRouter } from 'vue-router';  // 确保已导入useRouter
 // 导入登录组件和页脚组件
 import LoginComponent from './components/LoginComponent.vue';
 import Footer from './components/Footer.vue';
-// 导入文章数据
-import { articlesData } from './data/articles.js';
+// 导入API客户端
+import apiClient from './utils/api.js';
 // 状态变量定义
 const loginComponent = ref(null); // 确保这里初始化为 null
 const snowflakes = ref([]);  // 存储雪花元素数据
@@ -302,41 +302,81 @@ const goToTop = () => {
 }
 
 // 执行搜索
-const performSearch = () => {
+// 执行搜索方法
+const performSearch = async () => {
   if (!searchKeyword.value.trim()) {
-    // 如果搜索关键词为空，重置搜索状态
+    // 关键词为空时清空搜索状态
     isSearchActive.value = false;
     searchResults.value = [];
     return;
   }
 
-  // 根据关键词过滤文章
-  const results = articlesData.filter(article => {
-    const titleMatch = article.title.toLowerCase().includes(searchKeyword.value.toLowerCase());
-    const descriptionMatch = article.description.toLowerCase().includes(searchKeyword.value.toLowerCase());
-    const contentMatch = article.content.toLowerCase().includes(searchKeyword.value.toLowerCase());
-    return titleMatch || descriptionMatch || contentMatch;
-  });
+  try {
+    // 从API获取最新文章数据
+    const response = await apiClient.get('/articles');
+    const allArticles = response.data.map(article => ({
+      ...article,
+      // 将tags字符串转为数组
+      tags: article.tags ? article.tags.split(' ') : []
+    }));
 
-  searchResults.value = results;
-  isSearchActive.value = true;
+    // 执行搜索过滤
+    const results = allArticles.filter(article => {
+      const titleMatch = article.title?.toLowerCase().includes(searchKeyword.value.toLowerCase());
+      const descriptionMatch = article.description?.toLowerCase().includes(searchKeyword.value.toLowerCase());
+      const contentMatch = article.content?.toLowerCase().includes(searchKeyword.value.toLowerCase());
+      const tagsMatch = article.tags?.some(tag => tag.toLowerCase().includes(searchKeyword.value.toLowerCase()));
+      
+      return titleMatch || descriptionMatch || contentMatch || tagsMatch;
+    });
 
-  // 导航到搜索结果页或直接展示结果
-  if (results.length > 0) {
-    // 这里我们直接在当前页面展示结果
-    // 可以根据需要调整为导航到专门的搜索结果页
+    // 更新搜索状态
+    searchResults.value = results;
+    isSearchActive.value = true;
+    searchKeyword.value = searchKeyword.value.trim(); // 清除前后空格
+
+    // 跳转到文章区域
     navigateToHome(true);
+  } catch (error) {
+    console.error('搜索失败:', error);
+    // 显示错误提示
+    loginErrorMessage.value = '搜索失败，请稍后再试';
+    showLoginError.value = true;
+    setTimeout(() => showLoginError.value = false, 3000);
   }
 };
+
 // 提供登录状态和提示控制函数
 provide('isNight', isNight);
 provide('showLoginError', showLoginError);
 provide('loginErrorMessage', loginErrorMessage);
-// 提供搜索相关状态
+// 提供搜索状态给子组件
 provide('searchResults', searchResults);
 provide('isSearchActive', isSearchActive);
 provide('searchKeyword', searchKeyword);
+// 提供搜索方法
+provide('performSearch', performSearch);
 
+// 清除搜索方法
+const clearSearch = () => {
+  isSearchActive.value = false;
+  searchKeyword.value = '';
+  searchResults.value = [];
+};
+// 提供清除搜索方法
+provide('clearSearch', clearSearch);
+   // App.vue中监听路由变化
+   watch(
+     () => router.currentRoute.value.query.search,
+     (newVal) => {
+       if (newVal) {
+         searchKeyword.value = newVal;
+         performSearch();
+       }
+     },
+     { immediate: true }
+   );
+   
 // 提供显示登录错误提示的函数
 provide('showLoginPrompt', (message) => {
   loginErrorMessage.value = message || '请登录';

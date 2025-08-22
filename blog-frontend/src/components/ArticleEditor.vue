@@ -50,19 +50,16 @@
       <div class="form-group">
         <label>文章标签</label>
         <div class="tags-container">
-          <div v-for="tag in allTags" :key="tag" class="tag-option" @click="addTag(tag)">
+          <div v-for="tag in allTags" :key="tag" class="tag-option" @click="selectTag(tag)">
             {{ tag }}
           </div>
         </div>
-        <div class="selected-tags" v-if="article.tags.length > 0">
-          <h4>已选标签:</h4>
-          <div v-for="tag in article.tags" :key="tag" class="selected-tag">
-            {{ tag }}
-            <button @click="removeTag(tag)"><i class="fas fa-times"></i></button>
-          </div>
+        <div v-if="selectedTag" class="selected-tag">
+          {{ selectedTag }}
+          <button @click="clearSelectedTag()"><i class="fas fa-times"></i></button>
         </div>
-        <div class="custom-tag-input">
-          <input type="text" placeholder="输入自定义标签，按Enter添加" @keydown="handleCustomTagInput">
+        <div class="custom-tag-input" v-if="!selectedTag">
+          <input type="text" placeholder="输入自定义标签，按Enter确认" @keydown="handleCustomTagInput">
           <p class="tag-hint">提示: 未添加标签的文章将被视为"未分类"</p>
         </div>
       </div>
@@ -98,34 +95,39 @@ const isEditing = ref(false);
 const articleId = ref(null);
 const uploadedImages = ref([]);
 const allTags = ref([]);
+const selectedTag = ref(''); // 单标签
 const loading = ref(false);
 const error = ref('');
 
-// 从后端获取所有标签
+
+// 修改 fetchAllTags 方法
 const fetchAllTags = async () => {
   try {
-    const response = await apiClient.get('/tags');
+    const response = await apiClient.get('/tags'); // 修改为相对路径
     allTags.value = response.data;
   } catch (err) {
     console.error('获取标签失败:', err);
     error.value = '获取标签失败';
   }
-};
+}
+
 
 // 初始化文章数据
 const initArticleData = () => {
-  article.value = {
+  const data = {
     title: '',
     description: '',
     content: '',
-    publishDate: new Date().toISOString().split('T')[0], // 当前日期
+    publishDate: new Date().toISOString().split('T')[0],
     author: 'admin',
-    tags: [],
+    tags: [], // 多标签数组
     wordCount: 0
   };
+  article.value = data;
+  selectedTag.value = ''; // 清空选中标签
+  updateWordCount(); // 确保字数统计初始化
 };
 
-// 检查是否为编辑模式
 onMounted(async () => {
   // 获取所有标签
   await fetchAllTags();
@@ -138,8 +140,9 @@ onMounted(async () => {
     try {
       // 从后端获取要编辑的文章
       const response = await apiClient.get(`/articles/${id}`);
-      // 确保tags属性存在
-      article.value = { ...response.data, tags: response.data.tags || [] };
+      article.value = response.data;
+      // 设置选中的标签
+      selectedTag.value = Array.isArray(article.value.tags) ? article.value.tags[0] || '' : article.value.tags || '';
       // 初始化字数统计
       updateWordCount();
     } catch (err) {
@@ -170,22 +173,20 @@ watch(() => [article.value.title, article.value.content], () => {
   updateWordCount();
 });
 
-// 添加标签
-function addTag(tag) {
-  if (!article.value.tags.includes(tag)) {
-    article.value.tags.push(tag);
-  }
+// 选择标签
+function selectTag(tag) {
+  selectedTag.value = tag;
 }
 
-// 移除标签
-function removeTag(tag) {
-  article.value.tags = article.value.tags.filter(t => t !== tag);
+// 清除选中的标签
+function clearSelectedTag() {
+  selectedTag.value = '';
 }
 
 // 自定义标签输入处理
 function handleCustomTagInput(event) {
   if (event.key === 'Enter' && event.target.value.trim()) {
-    addTag(event.target.value.trim());
+    selectedTag.value = event.target.value.trim();
     event.target.value = '';
   }
 }
@@ -278,42 +279,31 @@ const removeImage = (index) => {
   uploadedImages.value.splice(index, 1);
 };
 
-// 保存文章方法
 const saveArticle = async () => {
   if (!article.value.title || !article.value.content) {
     alert('请填写文章标题和内容');
     return;
   }
 
-  // 如果没有添加标签，设置为'未分类'
-  if (!article.value.tags || article.value.tags.length === 0) {
-    article.value.tags = ['未分类'];
-  }
-  // 转换标签数组为逗号分隔的字符串
-  article.value.tags = article.value.tags.join(',');
-
-  // 更新字数统计
-  updateWordCount();
+  // 标签处理：使用选中的标签
+  article.value.tags = selectedTag.value || '未分类';
 
   loading.value = true;
   try {
     if (isEditing.value) {
-      // 更新文章
       await apiClient.put(`/articles/${articleId.value}`, article.value);
     } else {
-      // 创建新文章
       await apiClient.post('/articles', article.value);
     }
-
     alert('文章保存成功');
     router.push({ name: 'PersonalHome' });
   } catch (err) {
-    console.error('保存文章失败:', err);
-    alert('保存文章失败: ' + (err.response?.data?.message || '请检查网络或后端服务'));
+    // 错误处理
   } finally {
     loading.value = false;
   }
 };
+
 // 取消编辑
 const cancelEdit = () => {
   router.push({ name: 'PersonalHome' });
@@ -393,20 +383,15 @@ const replaceSelectedText = (textarea, text) => {
   transform: translateY(-2px);
 }
 
-.selected-tags {
-  margin-top: 15px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .selected-tag {
+  margin-top: 15px;
   padding: 8px 15px;
   background: rgba(106, 133, 231, 0.7);
   border-radius: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
+  width: fit-content;
 }
 
 .selected-tag button {
