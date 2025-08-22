@@ -1,0 +1,40 @@
+# 重新初始化本地仓库
+rm -rf .git
+cd D:\blog-wintertide
+git init
+
+# 添加所有文件
+git add .
+
+# 提交更改（使用正确的分支名称）
+git checkout -b main
+git commit -m "前后端提交"
+
+# 设置远程仓库（使用图片中显示的 blog-wintertide）
+git remote add origin https://gitee.com/lwinterl/blog-wintertide.git
+
+# 强制推送
+git push -f origin main
+git push -f origin master
+
+
+
+
+
+
+
+
+
+
+
+# 删除主项目的 .git 文件夹（强制删除）
+Remove-Item -Recurse -Force .git
+
+# 删除前端项目中的 .git 文件夹（如果存在）
+Remove-Item -Recurse -Force blog-frontend/.git -ErrorAction SilentlyContinue
+
+# 删除后端项目中的 .git 文件夹（如果存在）
+Remove-Item -Recurse -Force blog-backend/.git -ErrorAction SilentlyContinue
+
+# 删除 .gitmodules 文件（如果存在）
+Remove-Item .gitmodules -ErrorAction SilentlyContinue
