@@ -1,8 +1,18 @@
 <template>
  <!-- 文章详情容器 -->
   <div class="article-detail-container">
-   <!-- 文章存在时显示 -->
-    <div v-if="article" class="article-detail">
+   <!-- 加载动画 -->
+    <div class="loading-overlay" v-if="isLoading">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <p>加载文章中...</p>
+      </div>
+    </div>
+   
+   <!-- 文章内容过渡 -->
+    <Transition name="article-fade" mode="out-in">
+      <div v-if="article !== null" :key="article ? article.id : 'not-found'">
+        <div v-if="article" class="article-detail">
      <!-- 文章标题 -->
       <h1>{{ article.title }}</h1>
        <!-- 文章元信息 -->
@@ -12,12 +22,11 @@
            </div>
             <!-- 文章内容区域 -->
              <div class="article-content">
-              <!-- 文章内容 -->
-               <div class="article-text-content" v-html="article.content"></div>
+             
               <!-- 实际应用中可能需要富文本编辑器生成的内容 -->
              <div class="placeholder-content">
-            <p>这是文章的详细内容部分。</p>
-           <p>在实际应用中，这里会显示完整的文章内容，包括图片、段落、列表等元素。</p>
+           <!-- 文章内容 -->
+               <div class="article-text-content" v-html="article.content"></div>
           </div>
          <!-- 文章导航按钮组 -->
         <div class="article-navigation">
@@ -35,21 +44,22 @@
      </div>
       </div>
        <!-- 集成评论组件 -->
-        <ArticleComments :articleId="article.id" @showLogin="showLogin" />
+        <ArticleComments :articleId="article.id.toString()" @showLogin="showLogin" />
          </div>
-          <!-- 文章不存在时显示 -->
-           <div v-else class="not-found">
+        </div>
+        <div v-else class="not-found">
             <h2>文章未找到</h2>
              <p>抱歉，请求的文章不存在或已被删除。</p>
               <button class="back-button" @click="goBack">
                <i class="fas fa-arrow-left"></i> 返回
                 </button>
-               </div>
               </div>
+    </Transition>
+          </div>
              </template>
 <script setup>
 // 导入Vue组合式API相关函数
-import { ref, onMounted, inject, defineEmits, computed } from 'vue'
+import { ref, onMounted, onUnmounted, inject, defineEmits, computed, watch } from 'vue'
 // 导入路由相关函数
 import { useRoute, useRouter } from 'vue-router'
 // 导入评论组件
@@ -61,33 +71,56 @@ const route = useRoute()
 const router = useRouter()
 // 文章数据
 const article = ref(null)
+// 加载状态
+const isLoading = ref(false)
 
 // 已合并到下方的onMounted钩子函数中
 const emit = defineEmits(['showLogin'])
 // 当前文章索引
 const currentIndex = ref(-1)
 
-// 计算是否有上一篇文章 - 暂时禁用
-const hasPrevArticle = computed(() => false)
-// 计算是否有下一篇文章 - 暂时禁用
-const hasNextArticle = computed(() => false)
+// 计算是否有上一篇文章
+const hasPrevArticle = computed(() => currentIndex.value > 0)
+// 计算是否有下一篇文章
+const hasNextArticle = computed(() => {
+  if (!articlesData.value || articlesData.value.length === 0 || currentIndex.value === -1) return false
+  return currentIndex.value < articlesData.value.length - 1
+})
 
 // 返回函数
 const goBack = () => {
+  // 保存当前阅读位置
+  const scrollPosition = window.scrollY
+  localStorage.setItem(`scrollPosition_${route.params.id}`, scrollPosition)
+  
   // 获取当前文章id
   const id = route.params.id
   // 导航回首页，并传递文章id作为查询参数
+  // Home.vue中会监听这个参数并滚动到对应文章位置
   router.push({ name: 'Home', query: { returnToArticleId: id } })
 }
 
-// 导航到上一篇文章 - 暂时禁用
+// 导航到上一篇文章
 const navigateToPrev = () => {
-  // 后端API支持后实现
+  if (currentIndex.value > 0) {
+    const prevArticle = articlesData.value[currentIndex.value - 1]
+    router.push({ name: 'Article', params: { id: prevArticle.id } })
+  }
 }
 
-// 导航到下一篇文章 - 暂时禁用
+// 导航到下一篇文章
 const navigateToNext = () => {
-  // 后端API支持后实现
+  console.log('导航到下一篇文章:', { currentIndex: currentIndex.value, articlesLength: articlesData.value.length })
+  if (currentIndex.value !== -1 && currentIndex.value < articlesData.value.length - 1) {
+    const nextArticle = articlesData.value[currentIndex.value + 1]
+    console.log('下一篇文章:', nextArticle)
+    // 确保ID是字符串类型
+    router.push({ name: 'Article', params: { id: nextArticle.id.toString() } })
+  } else {
+    console.log('没有下一篇文章')
+    // 可以添加一个提示，告知用户没有下一篇文章
+    alert('已经是最后一篇文章了')
+  }
 }
 
 // 显示登录弹窗
@@ -95,20 +128,82 @@ const showLogin = () => {
   emit('showLogin')
 }
 
-// 组件挂载时执行
-onMounted(async () => {
-  const id = route.params.id; // 注意：ID是字符串类型
+// 文章数据列表
+const articlesData = ref([])
+
+// 加载文章数据的函数
+const loadArticleData = async (id) => {
+  console.log('加载文章数据, ID:', id)
   try {
-    const response = await axios.get(`/api/articles/${id}`);
-    article.value = response.data; // 仅使用API数据
-    // 查找当前文章在数据中的索引 - 暂时注释
-    // currentIndex.value = articlesData.findIndex(a => a.id === id)
+    // 显示加载状态
+    isLoading.value = true
+    // 重置文章数据
+    article.value = null
+    currentIndex.value = -1
+    // 确保有足够时间让加载动画显示
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    // 获取单篇文章详情
+    const articleResponse = await axios.get(`/api/articles/${id}`);
+    article.value = articleResponse.data;
+    console.log('加载的文章:', article.value)
+
+    // 获取所有文章以确定上下篇关系
+    const articlesResponse = await axios.get('/api/articles');
+    // 按发布日期排序文章（最新的在前）
+    articlesData.value = articlesResponse.data.sort((a, b) => new Date(b.publishDate) - new Date(a.publishDate));
+    console.log('所有文章:', articlesData.value)
+
+    // 查找当前文章在数据中的索引
+    currentIndex.value = articlesData.value.findIndex(a => a.id.toString() === id)
+    console.log('当前文章索引:', currentIndex.value)
 
     // 确保页面滚动到顶部
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (error) {
     console.error('加载文章详情失败:', error);
+  } finally {
+    // 隐藏加载状态
+    isLoading.value = false
   }
+}
+
+// 组件挂载时执行
+onMounted(() => {
+  const id = route.params.id;
+  loadArticleData(id)
+  
+  // 尝试恢复之前的阅读位置
+  setTimeout(() => {
+    const savedPosition = localStorage.getItem(`scrollPosition_${id}`)
+    if (savedPosition) {
+      window.scrollTo({ top: parseInt(savedPosition), behavior: 'smooth' })
+    }
+  }, 500)
+})
+
+// 监听路由参数变化
+const routeParamsChange = watch(
+  () => route.params.id,
+  (newId) => {
+    if (newId) {
+      console.log('路由参数变化，新ID:', newId)
+      loadArticleData(newId)
+      
+      // 尝试恢复新文章的阅读位置
+      setTimeout(() => {
+        const savedPosition = localStorage.getItem(`scrollPosition_${newId}`)
+        if (savedPosition) {
+          window.scrollTo({ top: parseInt(savedPosition), behavior: 'smooth' })
+        }
+      }, 500)
+    }
+  }
+)
+
+// 组件卸载时清除监听
+onUnmounted(() => {
+  routeParamsChange()
 })
 
 // 注入全局状态：是否为夜间模式
@@ -120,6 +215,38 @@ const isNight = inject('isNight')
 .article-detail-container {
   background: rgba(133, 153, 199, 0.661);
   position: relative;
+  padding: 30px;
+  margin: 50px auto;
+  max-width: 900px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+
+  /* 过渡动画样式 */
+  .article-fade-enter-active,
+  .article-fade-leave-active {
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .article-fade-enter-from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  .article-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  /* 夜间模式过渡动画 */
+  .night-mode & {
+    .article-fade-enter-active,
+    .article-fade-leave-active {
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .article-fade-enter-from,
+    .article-fade-leave-to {
+      opacity: 0;
+    }
+  }
   padding: 30px;
   margin: 50px auto;
   width: 80%;
@@ -333,6 +460,47 @@ const isNight = inject('isNight')
     order: 3;
   }
 }
+/* 加载动画样式 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  transition: opacity 0.3s ease;
+}
+
+.loading-spinner {
+  text-align: center;
+  color: white;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-top: 5px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+.loading-spinner p {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 1);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* 夜间模式样式 */
 .night-mode .article-detail-container {
   background: rgba(86, 87, 88, 0.541) !important;

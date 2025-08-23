@@ -8,7 +8,7 @@ git add .
 
 # 提交更改（使用正确的分支名称）
 git checkout -b main
-git commit -m "前后端提交"
+git commit -m "前后端提交，增删改查ok"
 
 # 设置远程仓库（使用图片中显示的 blog-wintertide）
 git remote add origin https://gitee.com/lwinterl/blog-wintertide.git

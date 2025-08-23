@@ -132,7 +132,16 @@ onMounted(async () => {
   // 获取所有标签
   await fetchAllTags();
 
-  const id = route.params.id;
+  // 确保获取到的是有效的文章ID
+  let id = route.params.id;
+  // 如果ID是对象，尝试获取其值
+  if (typeof id === 'object' && id !== null) {
+    // 尝试从对象中获取有效的ID值
+    id = id.id || id.toString() || null;
+  }
+  // 确保ID是数字或可以转换为数字的字符串
+  id = id ? parseInt(id, 10) : null;
+
   if (id) {
     isEditing.value = true;
     articleId.value = id;
@@ -156,6 +165,38 @@ onMounted(async () => {
     initArticleData();
   }
 });
+
+// 保存文章时确保使用正确的ID
+const saveArticle = async () => {
+  if (!article.value.title || !article.value.content) {
+    alert('请填写文章标题和内容');
+    return;
+  }
+
+  // 标签处理：使用选中的标签
+  article.value.tags = selectedTag.value || '未分类';
+
+  loading.value = true;
+  try {
+    if (isEditing.value && articleId.value) {
+      // 确保ID是数字
+      const numericId = parseInt(articleId.value, 10);
+      if (isNaN(numericId)) {
+        throw new Error('无效的文章ID');
+      }
+      await apiClient.put(`/articles/${numericId}`, article.value);
+    } else {
+      await apiClient.post('/articles', article.value);
+    }
+    alert('文章保存成功');
+    router.push({ name: 'PersonalHome' });
+  } catch (err) {
+    console.error('保存文章失败:', err);
+    error.value = '保存文章失败: ' + (err.message || '请稍后再试');
+  } finally {
+    loading.value = false;
+  }
+};
 
 // 监听内容变化，更新字数统计
 article.value.content && article.value.content.length > 0 && updateWordCount();
@@ -279,30 +320,7 @@ const removeImage = (index) => {
   uploadedImages.value.splice(index, 1);
 };
 
-const saveArticle = async () => {
-  if (!article.value.title || !article.value.content) {
-    alert('请填写文章标题和内容');
-    return;
-  }
 
-  // 标签处理：使用选中的标签
-  article.value.tags = selectedTag.value || '未分类';
-
-  loading.value = true;
-  try {
-    if (isEditing.value) {
-      await apiClient.put(`/articles/${articleId.value}`, article.value);
-    } else {
-      await apiClient.post('/articles', article.value);
-    }
-    alert('文章保存成功');
-    router.push({ name: 'PersonalHome' });
-  } catch (err) {
-    // 错误处理
-  } finally {
-    loading.value = false;
-  }
-};
 
 // 取消编辑
 const cancelEdit = () => {

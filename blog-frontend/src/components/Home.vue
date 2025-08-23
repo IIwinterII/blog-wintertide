@@ -35,6 +35,7 @@
           v-for="article in (isSearchActive ? searchResults : articles)" 
           :key="article.id" 
           class="article-card" 
+          :data-id="article.id" 
           @click="navigateToArticle(article)"
         >
           <h3>{{ article.title }}</h3>
@@ -95,6 +96,7 @@ const isShowIndicator = ref(false);
 const isScrolled = ref(false);
 const isWelcomeHidden = ref(false);
 const isContentFaded = ref(false);
+const isScrollingBack = ref(false); // 标识是否从文章返回首页正在滚动中
 
 const router = useRouter()
 const route = useRoute() // 添加路由实例
@@ -125,24 +127,97 @@ const navigateToArticle = (article) => {
 
 
 // 添加滚动到指定文章的函数
+// 控制返回后只滚动一次的标志
+let scrollOnceFlag = false;
+
 const scrollToArticle = (id) => {
-  setTimeout(() => {
-    // 查找对应文章的元素
-    const articles = document.querySelectorAll('.article-card')
-    let targetArticle = null
-
-    articles.forEach((article, index) => {
-      if (articles.value[index].id === id) {
-        targetArticle = article
+  // 确保id是数字类型
+  const articleId = parseInt(id);
+  console.log('尝试滚动到文章ID:', articleId);
+  
+  // 如果已经滚动过一次，则不再执行
+  if (scrollOnceFlag) {
+    console.log('已经滚动过一次，不再执行滚动');
+    isScrollingBack.value = false;
+    return;
+  }
+  
+  // 标记为已滚动
+  scrollOnceFlag = true;
+  
+  // 禁用滚动监听对isContentFaded的影响
+  isScrollingBack.value = true;
+  
+  // 立即显示内容区域
+  isScrolled.value = true;
+  isWelcomeHidden.value = true;
+  isContentFaded.value = false;
+  
+  // 重试次数计数器
+  let retryCount = 0;
+  const maxRetries = 5;
+  const retryDelay = 300; // 每次重试间隔300ms
+  
+  // 尝试查找并滚动到文章元素的函数
+  const attemptScroll = () => {
+    // 使用requestAnimationFrame确保DOM已更新
+    requestAnimationFrame(() => {
+      // 直接通过ID属性查找文章元素
+      const targetArticle = document.querySelector(`.article-card[data-id="${articleId}"]`);
+      
+      if (targetArticle) {
+        console.log('已找到文章元素:', targetArticle);
+        const yOffset = -80; // 调整偏移量，确保文章显示在视野中
+        const y = targetArticle.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        
+        // 使用scrollIntoView替代window.scrollTo，更可靠地滚动到元素
+        targetArticle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log('滚动到文章位置');
+        
+        // 使用IntersectionObserver检测滚动是否完成
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              console.log('文章元素已进入视口');
+              observer.unobserve(targetArticle);
+               
+              // 滚动完成后，恢复滚动监听对isContentFaded的影响
+              setTimeout(() => {
+                isScrollingBack.value = false;
+                console.log('恢复滚动监听');
+              }, 500);
+            }
+          });
+        }, { threshold: 0.5 });
+        
+        observer.observe(targetArticle);
+      } else if (retryCount < maxRetries) {
+        // 未找到元素但还有重试次数
+        retryCount++;
+        console.log(`未找到文章元素，第${retryCount}次重试...`);
+        setTimeout(attemptScroll, retryDelay);
+      } else {
+        // 达到最大重试次数
+        console.warn('达到最大重试次数，仍未找到对应的文章元素，ID:', articleId);
+        
+        // 尝试从数据中查找文章
+        const targetArticleData = articles.value.find(article => article.id === articleId);
+        if (targetArticleData) {
+          console.log('找到了文章数据，但DOM中不存在对应的元素:', targetArticleData.title);
+        } else {
+          console.warn('文章数据中也未找到ID为', articleId, '的文章');
+        }
+        
+        // 恢复滚动监听
+        setTimeout(() => {
+          isScrollingBack.value = false;
+        }, 1000);
       }
-    })
-
-    if (targetArticle) {
-      const yOffset = -100; // 偏移量，确保文章显示在视野中上方
-      const y = targetArticle.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-  }, 100);
+    });
+  };
+  
+  // 开始尝试滚动
+  attemptScroll();
 }
 
 // 监听路由变化，检查是否需要滚动到指定文章
@@ -150,13 +225,18 @@ watch(
   () => route.query.returnToArticleId,
   (newValue) => {
     if (newValue) {
+      // 重置滚动一次标志
+      scrollOnceFlag = false;
       // 先确保内容可见
       isScrolled.value = true
       isWelcomeHidden.value = true
+      isContentFaded.value = false
       // 滚动到指定文章
       scrollToArticle(parseInt(newValue))
       // 清除查询参数
-      router.replace({ query: {} })
+      setTimeout(() => {
+        router.replace({ query: {} })
+      }, 500);
     }
   },
   { immediate: true } // 初始加载时也检查
@@ -185,8 +265,11 @@ const handleScroll = () => {
   isWelcomeHidden.value = scrollY > 100;
   isShowIndicator.value = scrollY <= 50;
 
-  const isBottom = window.innerHeight + scrollY >= document.body.offsetHeight - 100;
-  isContentFaded.value = isBottom;
+  // 只有在不是从文章返回的滚动过程中，才更新isContentFaded
+  if (!isScrollingBack.value) {
+    const isBottom = window.innerHeight + scrollY >= document.body.offsetHeight - 100;
+    isContentFaded.value = isBottom;
+  }
 };
 
 // 组件挂载
