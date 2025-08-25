@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // 禁用CSRF保护（开发环境）
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/**").permitAll() // 允许所有人访问/api/下的所有路径
+                        .requestMatchers("/api/comments/**").permitAll() // 明确允许评论API
                         //.requestMatchers("/api/tags").permitAll()
                         .anyRequest().authenticated() // 其他所有路径需要认证
                 );
@@ -40,7 +41,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // 明确指定允许的前端地址
-        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:5173", "http://localhost:5174"));
+        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:5173", "http://localhost:5174", "http://localhost:8080"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

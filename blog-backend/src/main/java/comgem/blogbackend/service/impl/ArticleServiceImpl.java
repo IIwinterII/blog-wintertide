@@ -1,8 +1,8 @@
-// ArticleServiceImpl.java
-package comgem.blogbackend.service;
+package comgem.blogbackend.service.impl;
 
 import comgem.blogbackend.entity.Article;
 import comgem.blogbackend.repository.ArticleRepository;
+import comgem.blogbackend.service.ArticleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

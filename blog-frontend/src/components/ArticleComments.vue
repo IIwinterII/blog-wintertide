@@ -16,21 +16,30 @@
               placeholder="请输入您的评论" rows="3" required></textarea>
              </div>
             <!-- 提交评论按钮 -->
-           <button class="submit-button" @click="addComment">提交评论</button>
+           <button class="submit-button" @click="addComment" :disabled="isLoading">
+             <span v-if="isLoading">提交中...</span>
+             <span v-else>提交评论</span>
+           </button>
           </div>
+          <!-- 错误信息 -->
+          <div v-if="error" class="error-message">{{ error }}</div>
          <!-- 评论列表 -->
         <div class="comments-list">
+       <!-- 加载中 -->
+       <div v-if="isLoading" class="loading-comments">
+         <p>加载中...</p>
+       </div>
        <!-- 无评论提示 -->
-      <div v-if="comments.length === 0" class="no-comments">
+      <div v-else-if="comments.length === 0" class="no-comments">
      <p>暂无评论，快来发表第一条评论吧！</p>
     </div>
    <!-- 评论项：循环渲染所有评论 -->
-  <div class="comment-item" v-for="(comment, index) in comments" :key="index">
+  <div v-else class="comment-item" v-for="(comment, index) in comments" :key="index">
  <div class="comment-header">
 <!-- 评论用户名称 -->
  <span class="comment-name">{{ comment.username }}</span>
   <!-- 评论日期 -->
-   <span class="comment-date">{{ comment.date }}</span>
+   <span class="comment-date">{{ formatDate(comment.createTime) }}</span>
     </div>
      <!-- 评论内容 -->
       <div class="comment-content">{{ comment.content }}</div>
@@ -41,7 +50,9 @@
 
 <script setup>
 // 导入Vue组合式API相关函数
-import { ref, onMounted, inject, defineEmits, defineProps } from 'vue';
+import { ref, onMounted, inject, defineProps } from 'vue';
+// 导入评论API
+import { getCommentsByArticleId, addComment as apiAddComment } from '../utils/api';
 
 // 定义组件属性：接收文章ID
 const props = defineProps({ articleId: String });
@@ -51,50 +62,103 @@ const isLoggedIn = ref(false);
 const newComment = ref({ content: '' });
 // 状态变量：评论列表
 const comments = ref([]);
+// 状态变量：加载状态
+const isLoading = ref(false);
+// 状态变量：错误信息
+const error = ref('');
 // 注入全局状态：是否为夜间模式
 const isNight = inject('isNight');
 
+// 格式化日期函数
+const formatDate = (dateString) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return dateString;
+  }
+};
+
 // 生命周期钩子：组件挂载时执行
 onMounted(() => {
-  // 从本地存储加载评论（实际应用中应从后端获取）
-  const savedComments = localStorage.getItem(`article_comments_${props.articleId}`);
-  if (savedComments) {
-    comments.value = JSON.parse(savedComments);
-  }
+  // 检查用户登录状态（使用正确的localStorage键）
+    const user = JSON.parse(localStorage.getItem('user_info'));
+    isLoggedIn.value = !!user;
 
-  // 检查用户登录状态
-  const userInfo = localStorage.getItem('user_info');
-  isLoggedIn.value = !!userInfo;
+  // 加载评论
+  fetchComments();
 });
 
+// 方法：获取文章评论
+const fetchComments = async () => {
+  isLoading.value = true;
+  error.value = '';
+  try {
+    // 确保传递数字类型的ID
+    const response = await getCommentsByArticleId(Number(props.articleId));
+    comments.value = response.data;
+  } catch (err) {
+    if (err.response?.status === 403) {
+      error.value = '后端服务正在启动中，请稍后重试';
+    } else {
+      error.value = '获取评论失败，请重试';
+    }
+    console.error('Failed to fetch comments:', err);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 // 方法：添加新评论
-const addComment = () => {
+const addComment = async () => {
   // 验证评论内容是否为空
   if (!newComment.value.content.trim()) {
     alert('请输入评论内容');
     return;
   }
 
-  // 获取用户信息（从本地存储）
-  const userInfo = JSON.parse(localStorage.getItem('user_info') || '{"username":"匿名用户"}');
+  isLoading.value = true;
+  error.value = '';
 
-  // 创建新评论对象
-  const comment = {
-    id: Date.now(), // 使用时间戳作为唯一ID
-    username: userInfo.username, // 评论用户名称
-    content: newComment.value.content, // 评论内容
-    date: new Date().toLocaleString(), // 评论日期
-    articleId: props.articleId // 关联的文章ID
-  };
+  try {
+    // 获取用户信息（使用正确的localStorage键）
+    const user = JSON.parse(localStorage.getItem('user_info'));
+    if (!user) {
+      alert('请先登录');
+      return;
+    }
 
-  // 将新评论添加到评论列表开头
-  comments.value.unshift(comment);
+    // 创建评论对象
+    const comment = {
+      content: newComment.value.content,
+      articleId: parseInt(props.articleId),
+      userId: user.id,
+      username: user.username,
+      createTime: new Date()
+    };
 
-  // 保存评论到本地存储
-  localStorage.setItem(`article_comments_${props.articleId}`, JSON.stringify(comments.value));
-
-  // 清空评论输入框
-  newComment.value.content = '';
+    // 调用API添加评论
+    const response = await apiAddComment(comment);
+    if (response.data.success) {
+      // 添加成功，重新加载评论
+      await fetchComments();
+      // 清空输入框
+      newComment.value.content = '';
+    } else {
+      error.value = response.data.message || '添加评论失败';
+    }
+  } catch (err) {
+    error.value = '添加评论失败，请重试';
+    console.error('Failed to add comment:', err);
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 </script>
@@ -180,6 +244,30 @@ const addComment = () => {
   transform: translateY(-2px); /* 悬停时上移效果 */
 }
 
+/* 提交按钮禁用状态样式 */
+.submit-button:disabled {
+  background: rgba(65, 90, 119, 0.3);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 错误信息样式 */
+.error-message {
+  padding: 12px 15px;
+  background: rgba(220, 53, 69, 0.2);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 10px;
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+
+/* 加载中样式 */
+.loading-comments {
+  text-align: center;
+  padding: 20px 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 /* 评论列表样式 */
 .comments-list {
   margin-top: 30px;
@@ -239,5 +327,16 @@ const addComment = () => {
 
 .night-mode .article-comments .form-control {
   background: rgba(60, 60, 70, 0.3) !important; /* 夜间模式下表单输入框背景 */
+}
+
+/* 夜间模式错误信息样式 */
+.night-mode .article-comments .error-message {
+  background: rgba(220, 53, 69, 0.1) !important;
+  border-color: rgba(220, 53, 69, 0.2) !important;
+}
+
+/* 夜间模式提交按钮禁用状态 */
+.night-mode .article-comments .submit-button:disabled {
+  background: rgba(108, 117, 125, 0.3) !important;
 }
 </style>
