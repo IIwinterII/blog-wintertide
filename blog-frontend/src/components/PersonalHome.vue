@@ -21,6 +21,11 @@
           </div>
         </article>
 
+        <div v-if="isAdmin" class="item add wt-card wt-card--hover" @click="navigateToEditor()">
+          <i class="fas fa-plus"></i>
+          <span>增加文章</span>
+        </div>
+
       </div>
       <p v-else class="empty wt-muted">暂无文章</p>
     </section>

@@ -70,9 +70,11 @@
 
     <!-- 路由过渡 -->
     <div class="page-host">
-      <transition name="route-fade">
-        <router-view />
-      </transition>
+      <router-view v-slot="{ Component }">
+        <transition name="route-fade">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </div>
 
     <!-- 搜索弹层 -->

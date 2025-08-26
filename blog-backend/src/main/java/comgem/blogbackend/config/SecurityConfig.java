@@ -28,10 +28,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // 启用CORS配置
                 .csrf(csrf -> csrf.disable()) // 禁用CSRF保护（开发环境）
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/**").permitAll() // 允许所有人访问/api/下的所有路径
-                        .requestMatchers("/api/comments/**").permitAll() // 明确允许评论API
-                        //.requestMatchers("/api/tags").permitAll()
-                        .anyRequest().authenticated() // 其他所有路径需要认证
+                        .requestMatchers("/**").permitAll() // 开发环境放开所有请求，避免误拦截
                 );
         return http.build();
     }

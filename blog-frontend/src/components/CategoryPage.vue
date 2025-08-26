@@ -6,6 +6,12 @@
       <p class="wt-muted">按标签浏览文章，发现冬夜里的光</p>
     </section>
 
+    <!-- 顶部切换：归档 / 分类 -->
+    <section class="archive-tabs">
+      <button class="wt-chip" @click="router.push({ name: 'Archive' })">归档</button>
+      <button class="wt-chip is-active">分类</button>
+    </section>
+
     <!-- 标签切换 -->
     <section class="wt-card tabs-card">
       <div class="tabs-scroll">
@@ -229,5 +235,22 @@ onMounted(async () => {
   justify-content: center;
   gap: 10px;
   margin: 14px 0 0;
+}
+
+/* 顶部切换按钮样式，与示意一致 */
+.archive-tabs{
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.archive-tabs .wt-chip{
+  min-width: 110px;
+  justify-content: center;
+}
+.archive-tabs .wt-chip.is-active{
+  background: linear-gradient(145deg, rgba(142,197,255,0.90), rgba(207,232,255,0.75));
+  color: #0d1b2a;
+  border-color: rgba(142,197,255,0.80);
 }
 </style>

@@ -45,7 +45,7 @@
 
   <!-- 评论区（保持原逻辑组件） -->
   <section class="comments-wrap">
-    <ArticleComments :articleId="articleId" />
+    <ArticleComments :key="articleId" :articleId="articleId" />
   </section>
 </template>
 

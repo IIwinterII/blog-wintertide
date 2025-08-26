@@ -144,13 +144,16 @@ const save = async () => {
 
   saving.value = true
   try {
+    const authorName = JSON.parse(localStorage.getItem('user_info') || '{}')?.username || 'Winter'
+    const publishDate = Date.now() // 发送毫秒时间戳，后端 Jackson 可稳定反序列化为 java.util.Date
     const payload = {
       title: form.title,
-      description: form.summary,
-      summary: form.summary,
-      content: form.content,
-      coverUrl: form.coverUrl,
-      tags: form.tags
+      content: form.content || '',
+      description: form.summary || '',
+      publishDate,
+      author: authorName,
+      tags: (form.tags || []).join(' '),
+      wordCount: (form.content || '').replace(/\s+/g, '').length
     }
     if (isEdit.value) {
       await apiClient.put(`/articles/${articleId.value}`, payload)
