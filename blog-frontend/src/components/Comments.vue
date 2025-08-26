@@ -12,51 +12,32 @@
         </section>
       </aside>
 
-      <!-- 中间留言主区 -->
+      <!-- 中间留言主区（作为“特殊文章”的评论页） -->
       <main class="main">
         <section class="wt-card header">
           <h2 class="title">留言板</h2>
           <p class="sub wt-muted">欢迎留下你的想法</p>
         </section>
 
-        <section class="wt-card form">
-          <h3>发表留言</h3>
-          <div class="row">
-            <label>昵称</label>
-            <input v-model="newComment.name" type="text" class="ipt" placeholder="请输入您的昵称" />
-          </div>
-          <div class="row">
-            <label>留言内容</label>
-            <textarea v-model="newComment.content" class="ipt" rows="4" placeholder="请输入您的留言"></textarea>
-          </div>
-          <div class="actions">
-            <button class="wt-chip" @click="addComment">
-              <i class="far fa-paper-plane"></i> 提交留言
-            </button>
+        <section class="wt-card comment-host">
+          <ArticleComments :articleId="boardArticleId" @posted="onPosted" @loaded="onLoaded" />
+          <!-- 未登录锁定层 -->
+          <div v-if="!isLoggedIn" class="lock-mask">
+            <div class="lock-box wt-card">
+              <i class="fas fa-lock"></i>
+              <p>登录后可留言</p>
+              <button class="wt-chip" @click="router.push({ name: 'Login' })">
+                <i class="fas fa-sign-in-alt"></i> 去登录
+              </button>
+            </div>
           </div>
         </section>
 
-        <section class="list">
-          <h3 class="list-title">留言列表</h3>
-          <article v-for="(c,i) in comments" :key="i" class="comment wt-card wt-card--hover">
-            <header class="meta">
-              <span class="name">{{ c.name }}</span>
-              <span class="date">{{ c.date }}</span>
-            </header>
-            <p class="content">{{ c.content }}</p>
-          </article>
-
-          <div v-if="!comments.length" class="empty wt-card">
-            <i class="far fa-snowflake"></i>
-            暂无留言，写下第一条吧
-          </div>
-
-          <div class="back">
-            <button class="wt-chip" @click="goBack">
-              <i class="fas fa-arrow-left"></i> 返回
-            </button>
-          </div>
-        </section>
+        <div class="back">
+          <button class="wt-chip" @click="goBack">
+            <i class="fas fa-arrow-left"></i> 返回
+          </button>
+        </div>
       </main>
 
       <!-- 右侧概览与分类 -->
@@ -65,7 +46,7 @@
           <h3>站点概览</h3>
           <div class="stat"><span>文章总数</span><b>{{ articleCount }}</b></div>
           <div class="stat"><span>分类数量</span><b>{{ categoryCount }}</b></div>
-          <div class="stat"><span>留言数量</span><b>{{ comments.length }}</b></div>
+          <div class="stat"><span>留言数量</span><b>{{ boardCommentCount }}</b></div>
           <div class="stat"><span>总浏览量</span><b>{{ viewCount }}</b></div>
         </section>
 
@@ -84,13 +65,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { articlesData } from '../data/articles.js'
+import ArticleComments from './ArticleComments.vue'
+import apiClient from '../utils/api'
 
 const router = useRouter()
 
-// 本地留言
-const newComment = ref({ name: '', content: '' })
-const comments = ref([])
+// 登录态与留言板“文章ID”
+const isLoggedIn = ref(false)
+const boardArticleId = 1
 
 // 公告
 const announcements = ref([
@@ -99,35 +81,48 @@ const announcements = ref([
   { date: '2023-12-25', content: '祝大家圣诞快乐，网站 12/25-26 维护。' }
 ])
 
-// 概览与分类
-const articleCount = ref(articlesData.length)
-const categoryCount = ref(3)
+// 概览与分类（后端同步）
+const articleCount = ref(0)
+const categoryCount = ref(0)
 const viewCount = ref(12500)
-const categories = ref([
-  { name: '摄影技巧', count: 1 },
-  { name: '滑雪指南', count: 1 },
-  { name: '冬季养生', count: 1 }
-])
+const categories = ref([])
+const boardCommentCount = ref(0)
 
-onMounted(() => {
-  const saved = localStorage.getItem('wintertide_comments')
-  if (saved) comments.value = JSON.parse(saved)
+// 来自 ArticleComments 的事件回调，用于更新统计
+const onPosted = (count) => { boardCommentCount.value = count }
+const onLoaded = (count) => { boardCommentCount.value = count }
+
+onMounted(async () => {
+  const userInfo = localStorage.getItem('user_info')
+  isLoggedIn.value = !!userInfo
+
+  // 文章总数
+  try {
+    const res = await apiClient.get('/articles', { _skipLoading: true })
+    articleCount.value = Array.isArray(res.data) ? res.data.length : 0
+  } catch { articleCount.value = 0 }
+
+  // 分类（需与你后端对齐字段）
+  try {
+    const tagRes = await apiClient.get('/tags', { _skipLoading: true })
+    const list = Array.isArray(tagRes.data) ? tagRes.data : []
+    categories.value = list.map(it => ({
+      name: it.name || it.tag || it.category || '未分类',
+      count: Number(it.count || it.total || 0)
+    }))
+    categoryCount.value = categories.value.length
+  } catch {
+    categories.value = []
+    categoryCount.value = 0
+  }
+
+  // 留言数量（该特殊文章的评论数）
+  try {
+    const cRes = await apiClient.get('/comments/article/' + boardArticleId, { _skipLoading: true })
+    boardCommentCount.value = Array.isArray(cRes.data) ? cRes.data.length : 0
+  } catch { boardCommentCount.value = 0 }
 })
 
-const addComment = () => {
-  if (!newComment.value.name || !newComment.value.content) {
-    alert('请填写完整的留言信息')
-    return
-  }
-  const c = {
-    name: newComment.value.name,
-    content: newComment.value.content,
-    date: new Date().toLocaleString()
-  }
-  comments.value.unshift(c)
-  localStorage.setItem('wintertide_comments', JSON.stringify(comments.value))
-  newComment.value = { name: '', content: '' }
-}
 
 const goBack = () => router.back()
 </script>
@@ -220,4 +215,19 @@ label{ display:block; margin-bottom: 6px; }
 }
 .cat:last-child{ border-bottom: none; }
 .cnt{ color: var(--wt-fg-mute); }
+/* 留言板评论锁定遮罩 */
+.comment-host { position: relative; padding: 12px; }
+.lock-mask{
+  position: absolute; inset: 0; z-index: 5;
+  background: rgba(6,12,20,.45);
+  display: grid; place-items: center;
+  backdrop-filter: blur(2px);
+  border-radius: var(--wt-radius-md);
+}
+.lock-box{
+  padding: 16px;
+  text-align: center;
+  display: grid; gap: 8px; place-items: center;
+}
+.lock-box i{ font-size: 28px; }
 </style>

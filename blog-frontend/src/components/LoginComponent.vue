@@ -1,18 +1,20 @@
 <template>
   <div class="login-page">
-    <!-- 成功/错误提示（沿用全局类名，便于主题样式复用） -->
-    <div v-if="showLoginSuccess" class="global-login-success-toast">
-      <i class="fas fa-check-circle"></i> 登录成功！
-    </div>
-    <div v-if="showRegisterSuccess" class="global-login-success-toast">
-      <i class="fas fa-check-circle"></i> 注册成功！已切换到登录
-    </div>
-    <div v-if="showLoginError" class="global-login-error-toast">
-      <i class="fas fa-exclamation-circle"></i> {{ loginErrorMessage }}
-    </div>
-    <div v-if="showRegisterError" class="global-login-error-toast">
-      <i class="fas fa-exclamation-circle"></i> {{ registerErrorMessage }}
-    </div>
+    <teleport to="body">
+      <!-- 成功/错误提示（沿用全局类名，便于主题样式复用） -->
+      <div v-if="showLoginSuccess" class="global-login-success-toast">
+        <i class="fas fa-check-circle"></i> 登录成功！
+      </div>
+      <div v-if="showRegisterSuccess" class="global-login-success-toast">
+        <i class="fas fa-check-circle"></i> 注册成功！已切换到登录
+      </div>
+      <div v-if="showLoginError" class="global-login-error-toast">
+        <i class="fas fa-exclamation-circle"></i> {{ loginErrorMessage }}
+      </div>
+      <div v-if="showRegisterError" class="global-login-error-toast">
+        <i class="fas fa-exclamation-circle"></i> {{ registerErrorMessage }}
+      </div>
+    </teleport>
 
     <!-- 居中玻璃卡片 -->
     <section class="login-card wt-card">

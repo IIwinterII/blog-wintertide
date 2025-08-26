@@ -205,15 +205,17 @@ onMounted(async () => {
   loading.value = true
   try {
     const res = await apiClient.get('/articles')
-    articles.value = (res.data || []).map((a) => ({
-      ...a,
-      tags: normalizeTags(a.tags),
-    }))
+    articles.value = (res.data || [])
+      .filter(a => String(a.id) !== '1')
+      .map((a) => ({
+        ...a,
+        tags: normalizeTags(a.tags),
+      }))
   } catch (e) {
     console.error('加载文章失败:', e)
     articles.value = [
       {
-        id: 1,
+        id: 2,
         title: '冬日序曲',
         description: '当初雪落下，故事便有了新的章节。',
         publishDate: '2025-08-21',
@@ -223,7 +225,7 @@ onMounted(async () => {
         coverUrl: '',
       },
       {
-        id: 2,
+        id: 3,
         title: '北风与火光',
         description: '在寒夜里，光会更暖。',
         publishDate: '2025-08-20',

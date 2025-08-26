@@ -49,12 +49,14 @@
       <div class="cover" :style="{ backgroundImage: `url(${form.coverUrl})` }"></div>
     </section>
 
-    <!-- 提示 -->
-    <div v-if="toastText" class="toast wt-card" :class="toastType">
-      <i v-if="toastType==='ok'" class="fas fa-check-circle"></i>
-      <i v-else class="fas fa-exclamation-circle"></i>
-      <span>{{ toastText }}</span>
-    </div>
+    <!-- 提示（Teleport 到 body，避免被导航遮挡） -->
+    <teleport to="body">
+      <div v-if="toastText" class="toast wt-card" :class="toastType">
+        <i v-if="toastType==='ok'" class="fas fa-check-circle"></i>
+        <i v-else class="fas fa-exclamation-circle"></i>
+        <span>{{ toastText }}</span>
+      </div>
+    </teleport>
   </div>
 </template>
 

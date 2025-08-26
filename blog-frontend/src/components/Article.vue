@@ -28,6 +28,10 @@
     <div v-if="tags.length" class="reader-tags">
       <span v-for="t in tags" :key="t" class="wt-chip wt-chip--sm" @click="goTag(t)">{{ t }}</span>
     </div>
+    <button class="fav-btn" :class="{ on: isFav }" @click="toggleFavorite" title="收藏/取消收藏">
+      <i v-if="!isFav" class="far fa-heart"></i>
+      <i v-else class="fas fa-heart"></i>
+    </button>
   </main>
 
   <!-- 阅读导航：返回 / 上一篇 / 下一篇 -->
@@ -76,13 +80,77 @@ const normalizeTags = (tags) => {
 }
 const tags = computed(() => normalizeTags(article.value.tags))
 
+// 收藏：按用户隔离到 localStorage
+const username = computed(() => {
+  const info = JSON.parse(localStorage.getItem('user_info') || '{}')
+  return info?.username || 'guest'
+})
+const isFav = ref(false)
+const favKey = computed(() => `favorites:${username.value}`)
+
+const loadFavoriteState = async () => {
+  if (username.value === 'guest') {
+    try {
+      const list = JSON.parse(localStorage.getItem(favKey.value) || '[]')
+      isFav.value = list.some(it => String(it.id) === String(articleId.value))
+    } catch {
+      isFav.value = false
+    }
+    return
+  }
+  try {
+    const res = await apiClient.get('/favorites/check', {
+      params: { username: username.value, articleId: articleId.value }
+    })
+    isFav.value = !!(res.data && (res.data.favorite === true || res.data.favorite === 'true'))
+  } catch (e) {
+    isFav.value = false
+  }
+}
+
+const toggleFavorite = async () => {
+  if (username.value === 'guest') {
+    try {
+      const raw = localStorage.getItem(favKey.value) || '[]'
+      const list = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []
+      const idx = list.findIndex(it => String(it.id) === String(articleId.value))
+      if (idx >= 0) {
+        list.splice(idx, 1)
+        isFav.value = false
+        window.dispatchEvent(new CustomEvent('wt-favorites-changed', { detail: { user: username.value, id: articleId.value, action: 'remove' } }))
+      } else {
+        list.unshift({ id: articleId.value, title: article.value.title || '未命名文章' })
+        isFav.value = true
+        window.dispatchEvent(new CustomEvent('wt-favorites-changed', { detail: { user: username.value, id: articleId.value, action: 'add' } }))
+      }
+      localStorage.setItem(favKey.value, JSON.stringify(list.slice(0, 200)))
+    } catch (e) {
+      console.error('收藏失败', e)
+    }
+    return
+  }
+  try {
+    if (isFav.value) {
+      await apiClient.delete('/favorites', { params: { username: username.value, articleId: articleId.value } })
+      isFav.value = false
+      window.dispatchEvent(new CustomEvent('wt-favorites-changed', { detail: { user: username.value, id: articleId.value, action: 'remove' } }))
+    } else {
+      await apiClient.post('/favorites', { username: username.value, articleId: articleId.value })
+      isFav.value = true
+      window.dispatchEvent(new CustomEvent('wt-favorites-changed', { detail: { user: username.value, id: articleId.value, action: 'add' } }))
+    }
+  } catch (e) {
+    console.error('收藏失败', e)
+  }
+}
+
 // 文章列表用于“上一篇/下一篇”
 const articlesList = ref([])
 const fetchList = async () => {
   try {
     const list = await apiClient.get('/articles')
     const arr = Array.isArray(list.data) ? list.data : []
-    articlesList.value = arr
+    articlesList.value = arr.filter(it => String(it.id) !== '1')
   } catch (e) {
     articlesList.value = []
   }
@@ -167,7 +235,7 @@ const updateProgress = () => {
 
 onMounted(() => {
   window.scrollTo({ top: 0, behavior: 'auto' })
-  loadArticle()
+  loadArticle().then(loadFavoriteState)
   fetchList()
   updateProgress()
   window.addEventListener('scroll', updateProgress, { passive: true })
@@ -177,6 +245,7 @@ onMounted(() => {
 watch(() => route.params.id, async () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
   await loadArticle()
+  loadFavoriteState()
   updateProgress()
 })
 
@@ -237,4 +306,29 @@ onBeforeUnmount(() => {
   gap: 10px;
   margin: 16px 0;
 }
+
+/* 收藏按钮 */
+.wt-reader{ position: relative; }
+.fav-btn{
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 44px; height: 44px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  border: 1px solid rgba(207,232,255,0.28);
+  display: grid; place-items: center;
+  color: var(--wt-fg);
+  box-shadow: 0 12px 30px rgba(13,27,42,.28);
+  cursor: pointer;
+  transition: transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease;
+  z-index: 5;
+}
+.fav-btn:hover{
+  transform: translateY(-2px);
+  background: linear-gradient(145deg, rgba(142,197,255,0.20), rgba(207,232,255,0.12));
+  border-color: rgba(142,197,255,0.70);
+  box-shadow: 0 16px 40px rgba(13,27,42,.32);
+}
+.fav-btn.on{ color: #e74c3c; }
 </style>

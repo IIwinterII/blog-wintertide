@@ -50,12 +50,13 @@
 
 <script setup>
 // 导入Vue组合式API相关函数
-import { ref, onMounted, inject, defineProps } from 'vue';
+import { ref, onMounted, inject, defineProps, defineEmits } from 'vue';
 // 导入评论API
 import { getCommentsByArticleId, addComment as apiAddComment } from '../utils/api';
 
 // 定义组件属性：接收文章ID
 const props = defineProps({ articleId: String });
+const emit = defineEmits(['posted', 'loaded']);
 // 状态变量：用户登录状态
 const isLoggedIn = ref(false);
 // 状态变量：新评论内容
@@ -103,6 +104,7 @@ const fetchComments = async () => {
     // 确保传递数字类型的ID
     const response = await getCommentsByArticleId(Number(props.articleId));
     comments.value = response.data;
+    emit('loaded', comments.value.length);
   } catch (err) {
     if (err.response?.status === 403) {
       error.value = '后端服务正在启动中，请稍后重试';
@@ -134,24 +136,25 @@ const addComment = async () => {
       return;
     }
 
-    // 创建评论对象
-    const comment = {
+    // 创建评论对象（与后端契约对齐）
+    const payload = {
+      articleId: Number(props.articleId),
       content: newComment.value.content,
-      articleId: parseInt(props.articleId),
-      userId: user.id,
       username: user.username,
-      createTime: new Date()
+      userId: Number(user.id ?? user.userId)
     };
 
     // 调用API添加评论
-    const response = await apiAddComment(comment);
-    if (response.data.success) {
+    const response = await apiAddComment(payload);
+    if (response && (response.status === 200 || response.status === 201)) {
       // 添加成功，重新加载评论
       await fetchComments();
       // 清空输入框
       newComment.value.content = '';
+      // 通知父级（用于刷新“留言数量”等）
+      emit('posted', comments.value.length);
     } else {
-      error.value = response.data.message || '添加评论失败';
+      error.value = (response && response.data && response.data.message) || '添加评论失败';
     }
   } catch (err) {
     error.value = '添加评论失败，请重试';

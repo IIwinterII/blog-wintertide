@@ -109,16 +109,18 @@ const fetchArticles = async () => {
   try {
     const res = await apiClient.get('/articles')
     const arr = Array.isArray(res.data) ? res.data : []
-    articles.value = arr.map(a => ({
-      ...a,
-      tags: normalizeTags(a.tags)
-    }))
+    articles.value = arr
+      .filter(it => String(it.id) !== '1')
+      .map(a => ({
+        ...a,
+        tags: normalizeTags(a.tags)
+      }))
   } catch (e) {
     console.error('加载文章失败：', e)
     // 回退示例
     articles.value = [
       {
-        id: 1,
+        id: 2,
         title: '雪后初晴',
         summary: '窗外的光像是从湖面上反弹回来。',
         publishDate: '2025-08-20',
@@ -127,7 +129,7 @@ const fetchArticles = async () => {
         coverUrl: ''
       },
       {
-        id: 2,
+        id: 3,
         title: '在风里点灯',
         summary: '冬夜更需要一盏灯。',
         publishDate: '2025-08-22',

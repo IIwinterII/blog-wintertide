@@ -91,7 +91,7 @@ const goto = (a) => {
 onMounted(async () => {
   try {
     const res = await apiClient.get('/articles')
-    articles.value = Array.isArray(res.data) ? res.data : []
+    articles.value = (Array.isArray(res.data) ? res.data : []).filter(a => String(a.id) !== '1')
   } catch (e) {
     articles.value = []
   }

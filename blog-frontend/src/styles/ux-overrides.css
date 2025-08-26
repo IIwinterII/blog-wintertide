@@ -30,6 +30,21 @@
 }
 
 /* 日间模式：导航胶囊/工具按钮悬停更明显 */
+
+/* 全局加载动画 */
+.wt-loading{
+  display: grid;
+  place-items: center;
+  padding: 24px 0;
+}
+.wt-loading .wt-spinner{
+  width: 34px; height: 34px;
+  border: 3px solid rgba(230,240,255,.25);
+  border-top-color: rgba(142,197,255,.95);
+  border-radius: 50%;
+  animation: wt-spin .9s linear infinite;
+}
+@keyframes wt-spin { to { transform: rotate(360deg) } }
 .day-mode .nav-chip:hover {
   background: linear-gradient(145deg, rgba(142,197,255,0.95), rgba(207,232,255,0.85));
   color: #0d1b2a;
@@ -128,4 +143,53 @@ footer, .footer, .login-card, .login .wt-card {
   box-shadow:
     0 16px 40px rgba(13,27,42,.28),
     0 0 0 1px rgba(142,197,255,0.35) inset;
+}
+
+/* ===== 顶端提示层级提升（防止被卡片遮挡） ===== */
+.global-login-success-toast,
+.global-login-error-toast,
+.global-register-success-toast,
+.global-register-error-toast,
+.toast,
+.global-comment-toast {
+  z-index: 2147483646 !important; /* 仅次于雪花层（2147483647） */
+  pointer-events: none;            /* 不阻塞点击 */
+}
+
+/* 在任何遮罩/容器内仍保持最高层级显示 */
+.search-mask .global-login-success-toast,
+.search-mask .global-login-error-toast,
+.search-mask .toast {
+  z-index: 2147483646 !important;
+}
+
+/* 避开导航栏：将提示下移到导航栏下方 */
+.global-login-success-toast,
+.global-login-error-toast,
+.global-register-success-toast,
+.global-register-error-toast,
+.toast,
+.global-comment-toast {
+  top: 86px !important; /* 导航栏 top:10px + 高度 ~64px + 间距 */
+}
+
+@media (max-width: 700px){
+  .global-login-success-toast,
+  .global-login-error-toast,
+  .global-register-success-toast,
+  .global-register-error-toast,
+  .toast,
+  .global-comment-toast {
+    top: 76px !important; /* 小屏导航略低 */
+  }
+}
+@media (max-width: 480px){
+  .global-login-success-toast,
+  .global-login-error-toast,
+  .global-register-success-toast,
+  .global-register-error-toast,
+  .toast,
+  .global-comment-toast {
+    top: 68px !important; /* 极小屏更低 */
+  }
 }
