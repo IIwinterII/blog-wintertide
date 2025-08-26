@@ -1,158 +1,75 @@
 <template>
- <!-- 页脚信息 -->
-  <footer class="site-footer">
-   <div class="footer-content">
-    <div class="footer-section">
-     <h3>关于Wintertide</h3>
-      <p>Wintertide是一个专注于冬季主题的博客网站，分享冬季旅行、摄影、运动等精彩内容。</p>
-       </div>
-        <div class="footer-section">
-         <h3>最新动态</h3>
-          <p>版本 1.0.0 更新：全新界面设计，优化用户体验。</p>
-           <p>2024年1月：新增文章分类功能。</p>
-            </div>
-             <div class="footer-section">
-              <h3>联系我们</h3>
-               <p>邮箱：contact@wintertide.com</p>
-              <p>微信公众号：Wintertide</p>
-             </div>
-            </div>
-           <div class="footer-bottom">
-          <p>&copy; 2023-2024 Wintertide. 保留所有权利。</p>
-         </div>
-        </footer>
-       </template>
+  <footer class="site-footer wt-card">
+    <div class="footer-inner">
+      <div class="brand">
+        <i class="fas fa-snowflake"></i>
+        <span>Wintertide</span>
+      </div>
+
+      <div class="cols">
+        <section class="col">
+          <h3>关于 Wintertide</h3>
+          <p>一个偏爱冰蓝与玻璃拟态的个人空间。</p>
+        </section>
+        <section class="col">
+          <h3>最新动态</h3>
+          <p>界面重构 · 更丝滑的欢迎页与日/夜模式。</p>
+        </section>
+        <section class="col">
+          <h3>联系</h3>
+          <p>Email: contact@wintertide.com</p>
+        </section>
+      </div>
+
+      <nav class="links">
+        <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://gitee.com/" target="_blank" rel="noopener">Gitee</a>
+        <router-link :to="{ name: 'Comments' }">留言</router-link>
+      </nav>
+
+      <div class="copy wt-muted">© {{ new Date().getFullYear() }} Winter.</div>
+    </div>
+  </footer>
+</template>
+
 <script setup>
-// Footer组件不需要特别的逻辑
 </script>
 
+<style src="../styles/theme.css"></style>
 <style scoped>
-/* 页脚样式：磨砂玻璃效果 */
-.site-footer {
-  background: rgba(133, 153, 199, 0.661);
-  backdrop-filter: blur(15px);
-  color: var(--text-light);
-  border-radius: 20px;
-  padding: 40px 0 0;
-  position: relative;
-  z-index: 3;
+.site-footer{
+  width: min(1180px, 96%);
+  margin: 36px auto 24px;
+  padding: 18px 18px;
+  animation: wt-appear .6s ease both;
 }
+.footer-inner{ display: grid; gap: 12px; }
+.brand{ display:inline-flex; align-items:center; gap:8px; color: var(--wt-fg); font-weight:600; }
 
-/* 页脚内容布局 */
-.footer-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 50px;
+.cols{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:14px;
 }
+.col{
+  padding:10px 12px;
+  border-radius: var(--wt-radius-md);
+  background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+  border: 1px solid var(--wt-border);
+}
+.col h3{ margin:0 0 6px; font-size:1.1rem; color: var(--wt-fg); }
+.col p{ margin:0; color: var(--wt-fg-weak) }
 
-/* 页脚区块样式 */
-.footer-section {
-  margin-bottom: 30px;
+.links{ display:flex; gap:12px; flex-wrap: wrap; margin-top: 6px; }
+.links a, .links :deep(a){
+  color: var(--wt-fg); text-decoration:none; opacity:.9;
+  transition: transform .2s ease, opacity .2s ease;
 }
+.links a:hover, .links :deep(a:hover){ transform: translateY(-1px); opacity:1; }
 
-.footer-section h3 {
-  font-size: 1.5rem;
-  margin-bottom: 20px;
-  color: #fff;
-}
+.copy{ font-size:.92rem; }
 
-.footer-section p {
-  margin-bottom: 10px;
-  line-height: 1.6;
-}
-
-/* 页脚底部样式 */
-.footer-bottom {
-  text-align: center;
-  padding: 20px;
-  border-top: 1px solid rgba(206, 232, 242, 0.753);
-  margin-top: 30px;
-}
-
-/* 页脚响应式布局 */
-@media (max-width: 768px) {
-  .footer-content {
-    padding: 0 20px;
-    grid-template-columns: 1fr;
-  }
-}
-/* 响应式布局：小屏幕 */
-@media (max-width: 480px) {
-  .nav-button {
-    padding: 0.6rem 1rem;
-    font-size: 0.8rem;
-  }
-  
-  .search-input {
-    padding: 0.6rem;
-  }
-}
-/* 页脚样式：磨砂玻璃效果 */
-.site-footer {
-  background: rgba(133, 153, 199, 0.661);
-  backdrop-filter: blur(15px);
-  color: var(--text-light);
-  border-radius: 20px;
-  padding: 40px 0 0;
-  position: relative;
-  z-index: 3;
-}
-
-/* 页脚内容布局 */
-.footer-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 50px;
-}
-
-/* 页脚区块样式 */
-.footer-section {
-  margin-bottom: 30px;
-}
-
-.footer-section h3 {
-  font-size: 1.5rem;
-  margin-bottom: 20px;
-  color: #fff;
-}
-
-.footer-section p {
-  margin-bottom: 10px;
-  line-height: 1.6;
-}
-
-/* 页脚底部样式 */
-.footer-bottom {
-  text-align: center;
-  padding: 20px;
-  border-top: 1px solid rgba(206, 232, 242, 0.753);
-  margin-top: 30px;
-}
-
-/* 页脚响应式布局 */
-@media (max-width: 768px) {
-  .footer-content {
-    padding: 0 20px;
-    grid-template-columns: 1fr;
-  }
-}
-/* 夜间模式样式调整 */
-.night-mode .site-footer {
-  background: rgba(86, 87, 88, 0.541) !important;
-}
-
-.night-mode .footer-section h3,
-.night-mode .footer-section p {
-  color: #d0d0d0 !important;
-}
-
-.night-mode .footer-bottom {
-  border-top: 1px solid rgba(100, 100, 100, 0.5) !important;
+@media (max-width: 880px){
+  .cols{ grid-template-columns: 1fr; }
 }
 </style>

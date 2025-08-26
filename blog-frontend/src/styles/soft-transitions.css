@@ -1,0 +1,128 @@
+/* Smoothen day/night switching without changing your palette or logic */
+html, body, #app {
+  transition: background-color .45s ease, color .45s ease, filter .45s ease;
+}
+
+/* Gradient overlay (top mask over background video) */
+.gradient-overlay {
+  transition: background .6s ease, opacity .6s ease;
+}
+
+/* Common UI shells: cards, chips, readers, bars, panels */
+.wt-card,
+.wt-chip,
+.wt-reader,
+.wt-card,
+.wt-chip,
+.tool-btn,
+.articles-container,
+.footer,
+.page-host .wt-card,
+.search-card,
+.category-panel,
+.login-card {
+  animation: wt-bob 3.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Background video and wrappers get soft fade/filter transitions */
+video,
+.background-video,
+.bg-video {
+  transition: opacity .6s ease, filter .6s ease, transform .6s ease;
+}
+
+/* Gentle filter difference for visual continuity (does not change your palette) */
+.day-mode .background-video,
+.day-mode video {
+  filter: brightness(1.02) saturate(1.06);
+}
+.night-mode .background-video,
+.night-mode video {
+  filter: brightness(0.90) saturate(0.98);
+}
+
+/* Optional smoother anchor scroll to pair with hint arrows */
+html { scroll-behavior: smooth; }
+
+/* Form width normalization: keep inputs shorter inside cards */
+.wt-card { overflow: hidden; }
+
+.wt-card form,
+.wt-form {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.wt-card form .ipt,
+.wt-card .ipt,
+.wt-card .ipt-area,
+.login-card .ipt,
+.login-card .ipt-area,
+.comments-card .ipt,
+.comments-card .ipt-area {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 620px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wt-card .ipt-area,
+.login-card .ipt-area,
+.comments-card .ipt-area {
+  max-width: 680px;
+  min-height: 160px;
+  resize: vertical;
+}
+
+/* Do NOT constrain the article editor page */
+.editor .ipt,
+.editor .ipt-area {
+  max-width: none !important;
+}
+
+@media (max-width: 640px){
+  .wt-card form,
+  .wt-form,
+  .wt-card .ipt,
+  .wt-card .ipt-area,
+  .login-card .ipt,
+  .login-card .ipt-area,
+  .comments-card .ipt,
+  .comments-card .ipt-area {
+    max-width: 100%;
+  }
+}
+
+/* Subtle bobbing animation for nav, buttons and cards */
+@keyframes wt-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.wt-card,
+.wt-chip,
+.tool-btn,
+.articles-container,
+.footer,
+.page-host .wt-card,
+.search-card,
+.category-panel,
+.login-card {
+  animation: wt-bob 3.6s ease-in-out infinite;
+  will-change: transform;
+}
+.wt-card:hover,
+.wt-chip:hover,
+.tool-btn:hover,
+.search-card:hover {
+  animation-play-state: paused;
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wt-card, .wt-chip, .tool-btn, .articles-container, .footer, .page-host .wt-card, .search-card, .category-panel, .login-card {
+    animation: none !important;
+  }
+}

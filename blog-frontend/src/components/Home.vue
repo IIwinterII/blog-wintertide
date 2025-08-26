@@ -1,651 +1,414 @@
 <template>
- <!-- 欢迎文字：根据状态控制显示/隐藏动画 ，精选文章区域-->
-  <div 
-   class="welcome-container" 
-    :class="{ 
-     'show': isShowWelcome && !isWelcomeHidden,  // 显示动画
-      'hide': isWelcomeHidden                     // 隐藏动画
-        }"
-         >
-          <h1 class="welcome-text-top">Welcome to</h1>
-           <h2 class="welcome-text-bottom">wintertide！</h2>
-            </div>
-             <!-- 下滑提示：引导用户滚动查看内容 -->
-              <div 
-               class="scroll-indicator" 
-               :class="{ 'show': isShowIndicator }"  
-              @click="scrollDown">
-             <i class="fas fa-chevron-down"></i>
-            <p>点击此处或向下滑动</p>
-           </div>
-          <!-- 文章内容区 -->
-  <div class="content" :class="{'visible': isScrolled && !isContentFaded}">
-    <div class="articles-container">
-      <!-- 搜索结果标题 -->
-      <div v-if="isSearchActive" class="search-results-header">
-        <h2>搜索结果: "{{ searchKeyword }}" ({{ searchResults.length }})</h2>
-        <button class="clear-search" @click="clearSearch">
-          <i class="fas fa-times"></i> 清除搜索
+  <div class="page-home">
+    <!-- 主页小标题（终态尺寸） -->
+    <section class="home-head">
+      <h1 class="home-title">Welcome to Wintertide</h1>
+      <p class="hero-sub">在雪与光之间，写一段暖意的故事</p>
+    </section>
+
+    <!-- 工具条 + 玻璃分段筛选 -->
+    <section class="hero-controls">
+      <div class="hero-tools">
+        <button class="tool-btn" title="留言板" @click="router.push({ name: 'Comments' })">
+          <i class="far fa-envelope"></i>
+        </button>
+        <button class="tool-btn" title="动态" @click="router.push({ name: 'PersonalHome' })">
+          <i class="far fa-comment-dots"></i>
+        </button>
+        <button class="tool-btn" title="归档" @click="router.push({ name: 'Category' })">
+          <i class="far fa-clock"></i>
+        </button>
+        <button class="tool-btn" title="登录" @click="router.push({ name: 'Login' })">
+          <i class="fas fa-user"></i>
         </button>
       </div>
 
-      <!-- 文章卡片列表 -->
-      <div class="articles">
-        <div 
-          v-for="article in (isSearchActive ? searchResults : articles)" 
-          :key="article.id" 
-          class="article-card" 
-          :data-id="article.id" 
-          @click="navigateToArticle(article)"
+      <div class="segment wt-card">
+        <button
+          class="wt-chip seg-chip"
+          :class="{ 'is-active': activeSegment === 'all' }"
+          @click="setSegment('all')"
         >
-          <h3>{{ article.title }}</h3>
-          <p>{{ article.description }}</p>
-          <div class="article-meta">
-            <span><i class="far fa-calendar"></i> {{ article.publishDate }}</span>
-            <span><i class="far fa-user"></i> {{ article.author }}</span>
-            <span><i class="far fa-file-alt"></i> {{ article.wordCount || 'N/A' }}字</span>
-          </div>
-          <div class="article-tags">
-            <span v-for="tag in article.tags" :key="tag" class="tag" @click.stop="filterByTag(tag)">{{ tag }}</span>
-          </div>
-        </div>
+          全部文章
+        </button>
+        <button
+          class="wt-chip seg-chip"
+          :class="{ 'is-active': activeSegment === 'latest' }"
+          @click="setSegment('latest')"
+        >
+          最新文章
+        </button>
+        <button
+          class="wt-chip seg-chip"
+          :class="{ 'is-active': activeSegment === 'category' }"
+          @click="setSegment('category')"
+        >
+          文章分类
+        </button>
+      </div>
+    </section>
 
-        <!-- 无搜索结果提示 -->
-        <div v-if="isSearchActive && searchResults.length === 0" class="no-results">
-          没有找到匹配的文章
+    <!-- 列表区 -->
+    <section id="list" class="articles-wrap">
+      <div class="articles-grid">
+        <article
+          v-for="a in displayArticles"
+          :key="a.id"
+          class="article-card wt-card wt-card--icecut wt-card--hover"
+          @click="gotoArticle(a)"
+        >
+          <span class="wt-sparkle"></span>
+
+          <div v-if="a.coverUrl" class="card-cover" :style="{ backgroundImage: `url(${a.coverUrl})` }"></div>
+          <div v-else class="card-cover placeholder"></div>
+
+          <h3 class="card-title">{{ a.title }}</h3>
+          <p class="card-desc">{{ a.description || a.summary || '这篇文章很神秘，先点进去看看吧~' }}</p>
+
+          <div class="card-meta">
+            <span><i class="far fa-calendar"></i> {{ a.publishDate || a.date || '未知' }}</span>
+            <span><i class="far fa-user"></i> {{ a.author || '佚名' }}</span>
+            <span><i class="far fa-file-alt"></i> {{ a.wordCount || 'N/A' }}字</span>
+          </div>
+
+          <div class="card-tags" v-if="(a.tags && a.tags.length) || (typeof a.tags === 'string' && a.tags)">
+            <span
+              v-for="t in normalizeTags(a.tags)"
+              :key="t"
+              class="wt-chip wt-chip--sm"
+              @click.stop="filterByTag(t)"
+            >
+              {{ t }}
+            </span>
+          </div>
+        </article>
+      </div>
+
+      <!-- 无数据占位 -->
+      <div v-if="!loading && displayArticles.length === 0" class="empty">
+        <div class="wt-card empty-card">
+          <i class="far fa-snowflake"></i>
+          <p>这里暂时还没有内容</p>
         </div>
       </div>
-    </div>
+    </section>
   </div>
-       </template>
+</template>
+
 <script setup>
-import { ref, onMounted, onUnmounted, defineProps, defineEmits, watch, inject } from 'vue';
-import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios';
-// 导入API客户端
-import apiClient from '../utils/api.js';
-
-
-
-
-
-const searchResults = inject('searchResults', ref([]));
-const isSearchActive = inject('isSearchActive', ref(false));
-const searchKeyword = inject('searchKeyword', ref(''));
-
-const props = defineProps({ isNight: Boolean });
-const clearSearch = inject('clearSearch', () => {});
-
-// 按标签筛选文章
-const filterByTag = (tag) => {
-  // 清除当前搜索
-  clearSearch();
-  // 设置搜索关键词为标签
-  searchKeyword.value = tag;
-  // 执行搜索
-  performSearch();
-}
-
-// 导入performSearch方法
-const performSearch = inject('performSearch', () => {});
-
-
-
-const isShowWelcome = ref(false);
-const isShowIndicator = ref(false);
-const isScrolled = ref(false);
-const isWelcomeHidden = ref(false);
-const isContentFaded = ref(false);
-const isScrollingBack = ref(false); // 标识是否从文章返回首页正在滚动中
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import apiClient from '../utils/api'
 
 const router = useRouter()
-const route = useRoute() // 添加路由实例
-  const articles = ref([]);
 
+const articles = ref([])
+const loading = ref(true)
+const activeSegment = ref('latest')
+const selectedTag = ref(null)
+const searchKeyword = ref('')
 
-const emit = defineEmits({
-  showLogin: null,
-  showRegister: null
-});
-   onMounted(async () => {
-     try {
-       const response = await apiClient.get('/articles');
-       // 处理tags为null的情况，并将tags字符串转为数组
-       articles.value = response.data.map(article => ({
-         ...article,
-         tags: article.tags ? article.tags.split(' ') : []
-       }));
-     } catch (error) {
-       console.error('加载文章失败:', error);
-     }
-   });
-// 导航到指定文章
-const navigateToArticle = (article) => {
-  router.push({ name: 'Article', params: { id: article.id } });
+// 归一化 tags
+const normalizeTags = (tags) => {
+  if (Array.isArray(tags)) return tags.filter(Boolean)
+  if (!tags) return []
+  return String(tags)
+    .split(/[\s,，#、/|]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
-
-
-// 添加滚动到指定文章的函数
-// 控制返回后只滚动一次的标志
-let scrollOnceFlag = false;
-
-const scrollToArticle = (id) => {
-  // 确保id是数字类型
-  const articleId = parseInt(id);
-  console.log('尝试滚动到文章ID:', articleId);
-  
-  // 如果已经滚动过一次，则不再执行
-  if (scrollOnceFlag) {
-    console.log('已经滚动过一次，不再执行滚动');
-    isScrollingBack.value = false;
-    return;
-  }
-  
-  // 标记为已滚动
-  scrollOnceFlag = true;
-  
-  // 禁用滚动监听对isContentFaded的影响
-  isScrollingBack.value = true;
-  
-  // 立即显示内容区域
-  isScrolled.value = true;
-  isWelcomeHidden.value = true;
-  isContentFaded.value = false;
-  
-  // 重试次数计数器
-  let retryCount = 0;
-  const maxRetries = 5;
-  const retryDelay = 300; // 每次重试间隔300ms
-  
-  // 尝试查找并滚动到文章元素的函数
-  const attemptScroll = () => {
-    // 使用requestAnimationFrame确保DOM已更新
-    requestAnimationFrame(() => {
-      // 直接通过ID属性查找文章元素
-      const targetArticle = document.querySelector(`.article-card[data-id="${articleId}"]`);
-      
-      if (targetArticle) {
-        console.log('已找到文章元素:', targetArticle);
-        const yOffset = -80; // 调整偏移量，确保文章显示在视野中
-        const y = targetArticle.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        
-        // 使用scrollIntoView替代window.scrollTo，更可靠地滚动到元素
-        targetArticle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        console.log('滚动到文章位置');
-        
-        // 使用IntersectionObserver检测滚动是否完成
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              console.log('文章元素已进入视口');
-              observer.unobserve(targetArticle);
-               
-              // 滚动完成后，恢复滚动监听对isContentFaded的影响
-              setTimeout(() => {
-                isScrollingBack.value = false;
-                console.log('恢复滚动监听');
-              }, 500);
-            }
-          });
-        }, { threshold: 0.5 });
-        
-        observer.observe(targetArticle);
-      } else if (retryCount < maxRetries) {
-        // 未找到元素但还有重试次数
-        retryCount++;
-        console.log(`未找到文章元素，第${retryCount}次重试...`);
-        setTimeout(attemptScroll, retryDelay);
-      } else {
-        // 达到最大重试次数
-        console.warn('达到最大重试次数，仍未找到对应的文章元素，ID:', articleId);
-        
-        // 尝试从数据中查找文章
-        const targetArticleData = articles.value.find(article => article.id === articleId);
-        if (targetArticleData) {
-          console.log('找到了文章数据，但DOM中不存在对应的元素:', targetArticleData.title);
-        } else {
-          console.warn('文章数据中也未找到ID为', articleId, '的文章');
-        }
-        
-        // 恢复滚动监听
-        setTimeout(() => {
-          isScrollingBack.value = false;
-        }, 1000);
-      }
-    });
-  };
-  
-  // 开始尝试滚动
-  attemptScroll();
+const containsKw = (a, kw) => {
+  if (!kw) return true
+  const k = kw.toLowerCase()
+  const fields = [
+    a.title,
+    a.description,
+    a.summary,
+    normalizeTags(a.tags).join(' ')
+  ]
+  return fields.some(v => String(v || '').toLowerCase().includes(k))
 }
 
-// 监听路由变化，检查是否需要滚动到指定文章
-watch(
-  () => route.query.returnToArticleId,
-  (newValue) => {
-    if (newValue) {
-      // 重置滚动一次标志
-      scrollOnceFlag = false;
-      // 先确保内容可见
-      isScrolled.value = true
-      isWelcomeHidden.value = true
-      isContentFaded.value = false
-      // 滚动到指定文章
-      scrollToArticle(parseInt(newValue))
-      // 清除查询参数
-      setTimeout(() => {
-        router.replace({ query: {} })
-      }, 500);
-    }
-  },
-  { immediate: true } // 初始加载时也检查
-)
+const displayArticles = computed(() => {
+  let arr = [...articles.value]
 
-// 滚动到文章区域
-const scrollDown = () => {
-  // 延迟执行，确保文章容器已渲染
-  setTimeout(() => {
-    const articlesContainer = document.querySelector('.articles-container');
-    if (articlesContainer) {
-      const yOffset = -200; 
-      const y = articlesContainer.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth'  });
-    } else {
-      // 如果文章容器不存在，滚动到页面中间
-      window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
-    }
-  }, 100);
-};
-
-// 滚动事件处理
-const handleScroll = () => {
-  const scrollY = window.scrollY;
-  isScrolled.value = scrollY > 50;
-  isWelcomeHidden.value = scrollY > 100;
-  isShowIndicator.value = scrollY <= 50;
-
-  // 只有在不是从文章返回的滚动过程中，才更新isContentFaded
-  if (!isScrollingBack.value) {
-    const isBottom = window.innerHeight + scrollY >= document.body.offsetHeight - 100;
-    isContentFaded.value = isBottom;
+  // 标签过滤
+  if (selectedTag.value) {
+    arr = arr.filter((a) => normalizeTags(a.tags).includes(selectedTag.value))
   }
-};
 
-// 组件挂载
-onMounted(() => {
-  // 延迟显示欢迎文字
-  setTimeout(() => isShowWelcome.value = true, 1000);
-  // 延迟显示下滑提示
-  setTimeout(() => isShowIndicator.value = true, 2000);
-  // 绑定滚动事件
-  window.addEventListener('scroll', handleScroll);
-});
+  // 搜索关键字过滤
+  if (searchKeyword.value.trim()) {
+    arr = arr.filter((a) => containsKw(a, searchKeyword.value))
+  }
 
-// 组件卸载
+  // 最新排序
+  if (activeSegment.value === 'latest') {
+    arr.sort(
+      (a, b) =>
+        new Date(b.publishDate || b.date || 0) - new Date(a.publishDate || a.date || 0)
+    )
+  }
+
+  return arr
+})
+
+const gotoArticle = (a) => {
+  router.push({ name: 'Article', params: { id: a.id } })
+}
+
+const setSegment = (seg) => {
+  activeSegment.value = seg
+  if (seg !== 'category') {
+    selectedTag.value = null
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const filterByTag = (tag) => {
+  selectedTag.value = tag
+  activeSegment.value = 'all'
+}
+
+const onFilterTag = (e) => {
+  selectedTag.value = e.detail
+  activeSegment.value = 'all'
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const onSearch = (e) => {
+  searchKeyword.value = String(e.detail || '').trim()
+  activeSegment.value = 'all'
+  // 定位到列表
+  location.hash = 'list'
+}
+
+const onWheelTopToWelcome = (e) => {
+  if ((window.scrollY || window.pageYOffset || 0) === 0 && e.deltaY < -10) {
+    e.preventDefault?.()
+    router.replace({ name: 'Welcome' })
+  }
+}
+let touchStartY = 0
+const onTouchStartTop = (e) => { touchStartY = e.touches[0].clientY }
+const onTouchMoveTop = (e) => {
+  if ((window.scrollY || window.pageYOffset || 0) === 0) {
+    const dy = e.touches[0].clientY - touchStartY
+    if (dy > 26) {
+      router.replace({ name: 'Welcome' })
+    }
+  }
+}
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    const res = await apiClient.get('/articles')
+    articles.value = (res.data || []).map((a) => ({
+      ...a,
+      tags: normalizeTags(a.tags),
+    }))
+  } catch (e) {
+    console.error('加载文章失败:', e)
+    articles.value = [
+      {
+        id: 1,
+        title: '冬日序曲',
+        description: '当初雪落下，故事便有了新的章节。',
+        publishDate: '2025-08-21',
+        author: 'Winter',
+        wordCount: 1200,
+        tags: ['随笔', '冬天'],
+        coverUrl: '',
+      },
+      {
+        id: 2,
+        title: '北风与火光',
+        description: '在寒夜里，光会更暖。',
+        publishDate: '2025-08-20',
+        author: 'Winter',
+        wordCount: 980,
+        tags: ['生活', '想法'],
+        coverUrl: '',
+      },
+    ]
+  } finally {
+    loading.value = false
+  }
+
+  // 事件监听
+  window.addEventListener('wt-filter-tag', onFilterTag)
+  window.addEventListener('wt-search', onSearch)
+
+  // 顶部上滚返回欢迎页
+  window.addEventListener('wheel', onWheelTopToWelcome, { passive: false })
+  window.addEventListener('touchstart', onTouchStartTop, { passive: true })
+  window.addEventListener('touchmove', onTouchMoveTop, { passive: true })
+})
+
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll);
-});
+  window.removeEventListener('wt-filter-tag', onFilterTag)
+  window.removeEventListener('wt-search', onSearch)
+  window.removeEventListener('wheel', onWheelTopToWelcome)
+  window.removeEventListener('touchstart', onTouchStartTop)
+  window.removeEventListener('touchmove', onTouchMoveTop)
+})
 </script>
 
+<style src="../styles/theme.css"></style>
 <style scoped>
+.page-home {
+  position: relative;
+  padding: 120px 20px 60px;
+}
 
-/* 欢迎文字容器样式 */
-.welcome-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* 小标题（与“欢迎页缩小终态”一致） */
+.home-head{
   text-align: center;
-  opacity: 0;
-  transition: opacity 1s ease-in-out;
-  z-index: 10;
+  margin: 0 auto 12px;
 }
-
-.welcome-container.show {
-  opacity: 1;
-}
-
-.welcome-container.hide {
-  opacity: 0;
-}
-
-.welcome-text-top {
-  font-size: 3.5rem;
+.home-title{
+  font-size: clamp(28px, 4.6vw, 48px);
   font-weight: 700;
-  margin-bottom: 20px;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  letter-spacing: .6px;
+  color: #e6f0ff;
+  margin: 0 0 6px;
+  text-shadow: 0 10px 30px rgba(7,20,35,.45);
 }
-
-.welcome-text-bottom {
-  font-size: 5rem;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-  letter-spacing: 2px;
-}
-/* 欢迎文字容器：居中显示，带动画 */
-.welcome-container {
-  position: fixed;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.5);
-  opacity: 0;
-  transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
-  z-index: 1;
-  text-align: center;
-  width: 100%;
-  max-width: 900px;
-  box-sizing: border-box;
-  perspective: 1000px; /* 3D效果 */
-}/* 欢迎文字样式：带发光效果 */
-.welcome-text-top {
-  font-size: 4.5rem;
-  font-weight: 800;
-  color: #fff;
-  text-shadow: 
-    0 0 5px rgba(255,255,255,0.8),
-    0 0 10px rgba(255,255,255,0.6),
-    0 0 20px rgba(100, 149, 237, 0.8),
-    0 0 40px rgba(100, 149, 237, 0.6);
-  letter-spacing: 3px;
-  margin: 0 0 10px 0;
-  transform-origin: center;
-  animation: radialEffect 1.5s ease-out forwards, swing 2s infinite ease-in-out 1.5s;
-  opacity: 0;
-  position: relative;
-  left: -20px;
-}
-/* 欢迎文字显示动画 */
-.welcome-container.show {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-.welcome-text-bottom {
-  font-size: 6.5rem;
-  font-weight: 700;
-  color: #f0f8ff;
-  text-shadow: 
-    0 0 5px rgba(255,255,255,0.8),
-    0 0 10px rgba(255,255,255,0.6),
-    0 0 20px rgba(100, 149, 237, 0.8),
-    0 0 40px rgba(100, 149, 237, 0.6);
-  letter-spacing: 2px;
+.hero-sub{
+  color: rgba(230,240,255,.82);
   margin: 0;
-  transform-origin: center;
-  animation: radialEffect 1.5s ease-out 0.3s forwards, swing 2s infinite ease-in-out 1.8s;
-  opacity: 0;
-  position: relative;
-  left: 20px;
-}
-/* 添加媒体查询，调整小屏幕下的文字大小 */
-@media (max-width: 768px) {
-  .welcome-text-top {
-    font-size: 3rem;
-  }
-  
-  .welcome-text-bottom {
-    font-size: 4.5rem;
-  }
 }
 
-@media (max-width: 480px) {
-  .welcome-text-top {
-    font-size: 2.5rem;
-  }
-  
-  .welcome-text-bottom {
-    font-size: 3.5rem;
-  }
-}
-/* 下滑提示样式 */
-.scroll-indicator {
-  position: fixed;
-  bottom: 50px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: white;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  cursor: pointer;
-  z-index: 1;
-}
-
-/* 下滑提示显示动画 */
-.scroll-indicator.show {
-  opacity: 1;
-  animation: breathe 2s infinite ease-in-out; /* 呼吸效果 */
-}
-
-/* 内容区样式：位于视频下方 */
-.content {
-  position: relative;
-  margin-top: 100vh; /* 位于屏幕下方，滚动后可见 */
-  padding: 50px;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  z-index: 2;
-}
-
-.content.visible {
-  opacity: 1;
-  transition: all 0s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-
-.night-mode .articles-container {
-  background: rgba(86, 87, 88, 0.541) !important;
-}
-
-.night-mode .search-results-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.night-mode .clear-search {
-  background: rgba(220, 53, 69, 0.7);
-}
-
-.night-mode .clear-search:hover {
-  background: rgba(220, 53, 69, 0.9);
-}
-
-.search-results-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.search-results-header h2 {
-  font-size: 1.8rem;
-  margin: 0;
-  color: #fff;
-}
-
-.clear-search {
-  background: rgba(255, 99, 71, 0.7);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  transition: all 0.3s ease;
-}
-
-.clear-search:hover {
-  background: rgba(255, 99, 71, 0.9);
-  transform: translateY(-2px);
-}
-
-.no-results {
-  text-align: center;
-  padding: 40px 0;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1.2rem;
-}
-
-.articles-container {
-  background: rgba(133, 153, 199, 0.661);
-  backdrop-filter: blur(15px);
-  border-radius: 20px;
-  padding: 40px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+/* 工具条与分段 */
+.hero-controls{
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 0 auto 12px;
+}
+.hero-tools {
+  display: flex;
+  gap: 14px;
+  margin: 0 auto 16px;
+  width: fit-content;
+}
+.tool-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid rgba(207, 232, 255, 0.35);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+  color: #e6f0ff;
+  box-shadow: 0 10px 30px rgba(7, 20, 35, 0.35);
+  backdrop-filter: blur(14px);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.tool-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10));
 }
 
-.articles {
+.segment {
+  display: flex;
+  gap: 12px;
+  margin: 0 auto;
+  padding: 10px 12px;
+  border-radius: 999px;
+  width: fit-content;
+  border: 1px solid rgba(207, 232, 255, 0.35);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(7, 20, 35, 0.30);
+}
+.seg-chip {
+  min-width: 110px;
+  justify-content: center;
+}
+.seg-chip.is-active {
+  background: linear-gradient(145deg, rgba(142, 197, 255, 0.9), rgba(207, 232, 255, 0.75));
+  color: #0d1b2a;
+  border-color: rgba(142, 197, 255, 0.8);
+}
+
+/* 列表区 */
+.articles-wrap {
+  max-width: 1200px;
+  margin: 28px auto 0;
+}
+.articles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 30px;
-  margin-top: 30px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+@media (max-width: 1100px) {
+  .articles-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .articles-grid { grid-template-columns: 1fr; }
 }
 
 .article-card {
-  background: rgba(94, 95, 97, 0.322);
-  padding: 25px;
-  border-radius: 15px;
-  color: rgba(255,255,255,0.9);
-  backdrop-filter: blur(8px);
-  transform: translateY(0);
-  animation: fadeInUp 0.6s forwards;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
   cursor: pointer;
+  padding: 18px 18px 16px;
 }
-.article-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+.card-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 14px;
+  border: 1px solid rgba(207, 232, 255, 0.28);
 }
-.article-card:active {
-  transform: translateY(0);
-}
-.article-card h3 {
-  font-size: 1.8rem;
-  margin-bottom: 15px;
-  color: #fff;
+.card-cover.placeholder {
+  background-image: radial-gradient(60% 60% at 50% 20%, rgba(142, 197, 255, 0.28), rgba(207, 232, 255, 0.10));
 }
 
-.article-card p {
+.card-title {
   font-size: 1.1rem;
-  line-height: 1.6;
-  margin-bottom: 20px;
-  color: #e0e1dd;
+  color: #e6f0ff;
+  margin: 2px 0 6px;
 }
-
-.article-meta {
+.card-desc {
+  font-size: 0.95rem;
+  color: rgba(230, 240, 255, 0.82);
+  margin-bottom: 10px;
+}
+.card-meta {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
-  color: #a3b1c6;
-  margin-bottom: 15px;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: rgba(230, 240, 255, 0.72);
+  font-size: 0.86rem;
 }
+.card-meta i { margin-right: 6px; }
 
-.article-tags {
+.card-tags {
+  margin-top: 12px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 15px;
 }
 
-.tag {
-  background: rgba(100, 149, 237, 0.3);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.8rem;
+.empty {
+  display: grid;
+  place-items: center;
+  padding: 36px 0 18px;
+}
+.empty-card {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
   color: #e6f0ff;
-  border: 1px solid rgba(100, 149, 237, 0.5);
+  font-size: 1rem;
 }
-
-@keyframes fadeInUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+.empty-card i {
+  font-size: 28px;
+  margin-bottom: 8px;
 }
-
-.scroll-indicator.show {
-  opacity: 1;
-}
-
-.scroll-indicator i {
-  font-size: 2rem;
-  margin-bottom: 10px;
-  animation: bounce 2s infinite;
-}
-/* 文字摇摆动画 */
-@keyframes swing {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-20px);
-  }
-  60% {
-    transform: translateY(-10px);
-  }
-}
-
-
-
-/* 呼吸动画（用于下滑提示） */
-@keyframes breathe {
-  0%, 100% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(1.1);
-  }
-}
-
-/* 文字径向出现动画 */
-@keyframes radialEffect {
-  0% {
-    transform: scale(0) rotateX(-30deg) rotateY(-30deg);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.1) rotateX(0) rotateY(0);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1) rotateX(0) rotateY(0);
-    opacity: 1;
-  }
-}
-
-/* 欢迎文字隐藏动画 */
-.welcome-container.hide {
-  transform: translate(-50%, -50%) scale(0);
-  opacity: 0;
-  transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* 内容区淡出效果 */
-.content.fade-out {
-  opacity: 1;
-  transform: scale(0.95);
-  transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
 </style>

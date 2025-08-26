@@ -1,0 +1,131 @@
+/* ========== UX Overrides ========== */
+
+/* 文章卡片悬停动效：轻抬起 + 阴影 + 玻璃高光 */
+.articles .wt-card,
+.article-card {
+  position: relative;
+  transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease, background-color .28s ease;
+}
+.articles .wt-card:hover,
+.article-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(13,27,42,.28);
+}
+.articles .wt-card::after,
+.article-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(75deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.16) 48%, rgba(255,255,255,0) 100%);
+  opacity: 0;
+  transform: translateX(-40%) skewX(-18deg);
+  transition: opacity .6s ease, transform .8s ease;
+  border-radius: inherit;
+}
+.articles .wt-card:hover::after,
+.article-card:hover::after {
+  opacity: .75;
+  transform: translateX(60%) skewX(-18deg);
+}
+
+/* 日间模式：导航胶囊/工具按钮悬停更明显 */
+.day-mode .nav-chip:hover {
+  background: linear-gradient(145deg, rgba(142,197,255,0.95), rgba(207,232,255,0.85));
+  color: #0d1b2a;
+  border-color: rgba(142,197,255,0.88);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(13,27,42,.25);
+}
+.day-mode .tool-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.12));
+  box-shadow: 0 10px 26px rgba(13,27,42,.25);
+}
+
+/* 日间模式：品牌胶囊（Wintertide）hover/active 与导航一致高亮 */
+.day-mode .brand:hover,
+.day-mode .brand.router-link-active,
+.day-mode .brand.router-link-exact-active,
+.day-mode .brand:active,
+.day-mode .brand:focus-visible{
+  background: linear-gradient(145deg, rgba(142,197,255,0.95), rgba(207,232,255,0.85));
+  color: #0d1b2a;
+  border-color: rgba(142,197,255,0.88);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(13,27,42,.25);
+}
+
+/* 评论区：长内容自动换行、保留换行符 */
+.comments, .comments-list, .comment-item, .comment-item * , .comment-content, .comments-card {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.comment-content, .comments-card p {
+  white-space: pre-wrap;
+}
+
+/* 页脚与登录框加入起伏动画（使用已存在的 @keyframes wt-bob） */
+footer, .footer, .login-card, .login .wt-card {
+  animation: wt-bob 6.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  footer, .footer, .login-card, .login .wt-card {
+    animation: none !important;
+  }
+}
+
+/* 文章卡片悬停显示“小哥”徽标（Font Awesome） */
+.article-card::before {
+  content: "\f007"; /* fa-user */
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #0d1b2a;
+  background: linear-gradient(145deg, rgba(255,255,255,.85), rgba(220,235,255,.78));
+  border: 1px solid rgba(142,197,255,.85);
+  box-shadow: 0 8px 22px rgba(13,27,42,.28);
+  opacity: 0;
+  transform: translateY(-6px) scale(.92);
+  transition: opacity .25s ease, transform .25s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+.article-card:hover::before {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* 去除文章卡片左上角白光与小哥徽标 */
+.article-card::after,
+.articles .wt-card::after{
+  content: none !important;
+  background: none !important;
+  opacity: 0 !important;
+  box-shadow: none !important;
+}
+.article-card:hover::after,
+.articles .wt-card:hover::after{ opacity: 0 !important; }
+
+.article-card::before{ content: none !important; }
+.article-card:hover::before{
+  opacity: 0 !important;
+  transform: none !important;
+}
+
+/* 文章卡片悬停：整体冰蓝高亮（类似导航按钮的可点击反馈） */
+.article-card:hover,
+.articles .wt-card:hover{
+  background: linear-gradient(145deg, rgba(142,197,255,0.20), rgba(207,232,255,0.12));
+  border-color: rgba(142,197,255,0.70);
+  box-shadow:
+    0 16px 40px rgba(13,27,42,.28),
+    0 0 0 1px rgba(142,197,255,0.35) inset;
+}

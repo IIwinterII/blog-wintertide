@@ -4,11 +4,11 @@
    <!-- 评论标题 -->
     <h3 class="comments-title">评论区</h3>
      <!-- 登录提示：未登录状态显示 -->
-      <div v-if="!isLoggedIn" class="login-prompt">
+      <div v-if="!isLoggedIn" class="login-prompt wt-card wt-card--icecut">
        <p>请先登录后再发表评论</p>
          </div>
           <!-- 评论表单：登录状态显示 -->
-           <div v-else class="comment-form">
+           <div v-else class="comment-form wt-card wt-card--icecut">
             <div class="form-group">
              <label for="comment-content">发表评论</label>
               <!-- 评论内容输入框，双向绑定到newComment.content -->
@@ -16,7 +16,7 @@
               placeholder="请输入您的评论" rows="3" required></textarea>
              </div>
             <!-- 提交评论按钮 -->
-           <button class="submit-button" @click="addComment" :disabled="isLoading">
+           <button class="submit-button wt-chip" @click="addComment" :disabled="isLoading">
              <span v-if="isLoading">提交中...</span>
              <span v-else>提交评论</span>
            </button>
@@ -34,7 +34,7 @@
      <p>暂无评论，快来发表第一条评论吧！</p>
     </div>
    <!-- 评论项：循环渲染所有评论 -->
-  <div v-else class="comment-item" v-for="(comment, index) in comments" :key="index">
+  <div v-else class="comment-item wt-card wt-card--icecut wt-sheen" v-for="(comment, index) in comments" :key="index">
  <div class="comment-header">
 <!-- 评论用户名称 -->
  <span class="comment-name">{{ comment.username }}</span>
@@ -181,9 +181,7 @@ const addComment = async () => {
 /* 登录提示样式 */
 .login-prompt {
   text-align: center;
-  padding: 30px 0;
-  background: rgba(255, 255, 255, 0.05); /* 半透明白色背景 */
-  border-radius: 10px;
+  padding: 20px 16px;
   margin-bottom: 20px;
 }
 
@@ -229,24 +227,18 @@ const addComment = async () => {
 
 /* 提交按钮样式 */
 .submit-button {
-  padding: 10px 20px;
-  background: rgba(65, 90, 119, 0.7);
+  background: transparent;
   border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  padding: 0;
 }
 
 .submit-button:hover {
-  background: rgba(65, 90, 119, 0.9);
   transform: translateY(-2px); /* 悬停时上移效果 */
 }
 
 /* 提交按钮禁用状态样式 */
 .submit-button:disabled {
-  background: rgba(65, 90, 119, 0.3);
+  opacity: .6;
   cursor: not-allowed;
   transform: none;
 }
@@ -282,12 +274,10 @@ const addComment = async () => {
 
 /* 评论项样式 */
 .comment-item {
-  background: rgba(151, 179, 229, 0.548); /* 半透明蓝紫色背景 */
   padding: 20px;
   border-radius: 15px;
   margin-bottom: 15px;
-  backdrop-filter: blur(8px); /* 磨砂玻璃效果 */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
 }
 
 /* 评论头部样式 */
