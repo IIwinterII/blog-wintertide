@@ -34,6 +34,9 @@ public class Article {
 
     @Column(name = "deleted")
     private Boolean deleted = false;
+    
+    @Column(name = "cover_url")
+    private String coverUrl;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -59,6 +62,11 @@ public class Article {
 
     public Integer getWordCount() { return wordCount; }
     public void setWordCount(Integer wordCount) { this.wordCount = wordCount; }
-
+    
+    public String getCoverUrl() { return coverUrl; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+    
+    public Boolean getDeleted() { return deleted; }
+    public void setDeleted(Boolean deleted) { this.deleted = deleted; }
 }
 

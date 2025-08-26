@@ -26,8 +26,20 @@ public class ArticleController {
     }
 
     @PostMapping
-    public ResponseEntity<Article> createArticle(@RequestBody Article article) {
-        return ResponseEntity.ok(articleService.createArticle(article));
+    public ResponseEntity<?> createArticle(@RequestBody Article article) {
+        try {
+            System.out.println("接收到文章创建请求: " + article.getTitle());
+            System.out.println("日期: " + article.getPublishDate());
+            System.out.println("内容长度: " + (article.getContent() != null ? article.getContent().length() : 0));
+            
+            Article savedArticle = articleService.createArticle(article);
+            System.out.println("文章创建成功，ID: " + savedArticle.getId());
+            return ResponseEntity.ok(savedArticle);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("文章创建失败: " + e.getMessage());
+            return ResponseEntity.status(500).body("文章创建失败: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
