@@ -8,11 +8,11 @@
     <div class="snow-container"></div>
      <!-- 添加登录成功提示 -->
      <!-- 登录成功提示 -->
-    <div v-if="showLoginSuccess" class="global-login-success-toast">
+    <div v-if="showLoginSuccess" class="login-success-toast">
       <i class="fas fa-check-circle"></i> 登录成功！
     </div>
      <!-- 添加登录错误提示 -->
-     <div v-if="showLoginError" class="global-login-error-toast">
+     <div v-if="showLoginError" class="login-error-toast">
       <i class="fas fa-exclamation-circle"></i> {{ loginErrorMessage }}
      </div>
     <div class="home-container">
@@ -66,8 +66,6 @@
         :class="{ 'active': videoIndex }"  
         src="@/assets/videos/night/background1.mp4"
       ></video>
-      <!-- 引入font-awesome图标库 -->
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
        <!-- 添加新的回到顶部按钮：放在日夜模式切换按钮上方 -->
       <button class="back-to-top-button" @click="goToTop" :class="{'visible': isShowBackToTop}">
         <i class="fas fa-arrow-up"></i>
@@ -519,7 +517,7 @@ button:focus {
     rgba(255,255,255,0.3) 0%,
     rgba(255,255,255,0) 100%
   );
-  padding: -10px 0;
+  padding: 10px 0;
   z-index: 1000;
   transition: top 1s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.5s ease, backdrop-filter 0.5s ease;
   animation: navbarFloat 3s ease-in-out infinite 2s; /* 漂浮效果 */
@@ -964,5 +962,27 @@ button:focus {
     width: 90%;
     margin: 0.5rem auto;
   }
+}
+/* 全局登录提示基础样式（夜间模式在下方已有覆盖） */
+.login-success-toast,
+.login-error-toast {
+  position: fixed;
+  top: 80px;
+  right: 30px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: #fff;
+  backdrop-filter: blur(6px);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+.login-success-toast {
+  background-color: rgba(46, 204, 113, 0.9);
+}
+.login-error-toast {
+  background-color: rgba(231, 76, 60, 0.9);
 }
 </style>
