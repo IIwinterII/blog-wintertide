@@ -200,7 +200,17 @@ const videoNightSrc = computed(() => new URL('./assets/videos/night/background1.
 }
 .nav-left { display: flex; align-items: center; gap: 10px; }
 .nav-center { display: flex; gap: 10px; justify-content: center; }
-.nav-right { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+.nav-right { 
+  display: flex; 
+  gap: 10px; 
+  justify-content: flex-end; 
+  align-items: center; 
+}
+.nav-right .tool-btn i { 
+  line-height: 1; 
+  display: inline-block; 
+  vertical-align: middle; 
+}
 
 .brand .brand-text { font-weight: 600; letter-spacing: .3px; }
 

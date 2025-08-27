@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <teleport to="body">
-      <!-- 成功/错误提示（沿用全局类名，便于主题样式复用） -->
+      <!-- 成功/错误提示 -->
       <div v-if="showLoginSuccess" class="global-login-success-toast">
         <i class="fas fa-check-circle"></i> 登录成功！
       </div>
@@ -69,6 +69,15 @@
           </div>
         </div>
 
+        <!-- 登录验证码 -->
+        <div class="row captcha-row">
+          <span class="q">{{ captchaLogin.question }}</span>
+          <input class="ipt small" v-model.trim="captchaLoginInput" placeholder="结果" />
+          <button type="button" class="wt-chip wt-chip--sm" @click="regenCaptchaLogin">
+            <i class="fas fa-sync"></i>
+          </button>
+        </div>
+
         <button class="wt-chip submit" :disabled="isLoggingIn">
           <i class="far fa-paper-plane"></i> {{ isLoggingIn ? '登录中…' : '登录' }}
         </button>
@@ -127,6 +136,15 @@
           </div>
         </div>
 
+        <!-- 注册验证码 -->
+        <div class="row captcha-row">
+          <span class="q">{{ captchaReg.question }}</span>
+          <input class="ipt small" v-model.trim="captchaRegInput" placeholder="结果" />
+          <button type="button" class="wt-chip wt-chip--sm" @click="regenCaptchaReg">
+            <i class="fas fa-sync"></i>
+          </button>
+        </div>
+
         <button class="wt-chip submit" :disabled="isRegistering">
           <i class="far fa-paper-plane"></i> {{ isRegistering ? '注册中…' : '注册' }}
         </button>
@@ -144,8 +162,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-// 使用现有的认证函数
 import { login, register } from '../data/auth.js'
+import { makeCaptcha, verifyCaptcha, throttleSubmit } from '../utils/security.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -169,6 +187,14 @@ const showRegisterError = ref(false)
 const loginErrorMessage = ref('')
 const registerErrorMessage = ref('')
 
+// 验证码
+const captchaLogin = ref(makeCaptcha())
+const captchaLoginInput = ref('')
+const captchaReg = ref(makeCaptcha())
+const captchaRegInput = ref('')
+const regenCaptchaLogin = () => { captchaLogin.value = makeCaptcha(); captchaLoginInput.value = '' }
+const regenCaptchaReg = () => { captchaReg.value = makeCaptcha(); captchaRegInput.value = '' }
+
 // 初始化：根据查询参数或默认进入登录
 onMounted(() => {
   const m = (route.query.mode || '').toString().toLowerCase()
@@ -177,7 +203,6 @@ onMounted(() => {
 
 const switchMode = (m) => {
   mode.value = m
-  // 同步地址栏 query（非必需）
   router.replace({ name: 'Login', query: m === 'register' ? { mode: 'register' } : {} })
 }
 
@@ -187,6 +212,22 @@ const handleLogin = async () => {
   if (!username || !password) {
     showLoginError.value = true
     loginErrorMessage.value = '请输入账号和密码'
+    setTimeout(() => (showLoginError.value = false), 2300)
+    return
+  }
+  // 验证码
+  if (!verifyCaptcha(captchaLogin.value, captchaLoginInput.value)) {
+    showLoginError.value = true
+    loginErrorMessage.value = '验证码错误'
+    setTimeout(() => (showLoginError.value = false), 2300)
+    regenCaptchaLogin()
+    return
+  }
+  // 限流（5s/次）
+  const tl = throttleSubmit(`login:${username}`, 5000)
+  if (!tl.ok) {
+    showLoginError.value = true
+    loginErrorMessage.value = `操作太频繁，请${Math.ceil(tl.wait / 1000)}秒后再试`
     setTimeout(() => (showLoginError.value = false), 2300)
     return
   }
@@ -212,6 +253,7 @@ const handleLogin = async () => {
     setTimeout(() => (showLoginError.value = false), 2300)
   } finally {
     isLoggingIn.value = false
+    regenCaptchaLogin()
   }
 }
 
@@ -230,13 +272,28 @@ const handleRegister = async () => {
     setTimeout(() => (showRegisterError.value = false), 2300)
     return
   }
+  // 验证码
+  if (!verifyCaptcha(captchaReg.value, captchaRegInput.value)) {
+    showRegisterError.value = true
+    registerErrorMessage.value = '验证码错误'
+    setTimeout(() => (showRegisterError.value = false), 2300)
+    regenCaptchaReg()
+    return
+  }
+  // 限流（5s/次）
+  const tl = throttleSubmit(`register:${username || 'empty'}`, 5000)
+  if (!tl.ok) {
+    showRegisterError.value = true
+    registerErrorMessage.value = `操作太频繁，请${Math.ceil(tl.wait / 1000)}秒后再试`
+    setTimeout(() => (showRegisterError.value = false), 2300)
+    return
+  }
 
   isRegistering.value = true
   try {
     const res = await register(username, password, email)
     if (res?.success) {
       showRegisterSuccess.value = true
-      // 清空并切到登录
       registerForm.value = { username: '', password: '', email: '', confirmPassword: '' }
       setTimeout(() => {
         showRegisterSuccess.value = false
@@ -253,17 +310,16 @@ const handleRegister = async () => {
     setTimeout(() => (showRegisterError.value = false), 2300)
   } finally {
     isRegistering.value = false
+    regenCaptchaReg()
   }
 }
 
-// 保留对外暴露，便于其他地方按需唤起此页并切换模式
+// 对外暴露
 const showLoginModal = () => {
   if (route.name !== 'Login') router.push({ name: 'Login' })
   switchMode('login')
 }
-const closeLoginModal = () => {
-  router.push({ name: 'Home' })
-}
+const closeLoginModal = () => { router.push({ name: 'Home' }) }
 defineExpose({ showLoginModal, closeLoginModal })
 </script>
 
@@ -314,6 +370,12 @@ defineExpose({ showLoginModal, closeLoginModal })
   color: var(--wt-fg);
   outline: none;
 }
+.ipt.small{ max-width: 120px; }
+.captcha-row{
+  display: flex; align-items: center; gap: 10px;
+}
+.captcha-row .q{ color: #e6f0ff; font-weight: 600; }
+
 .pw{ position: relative; }
 .toggle{
   position: absolute; right: 10px; top: 50%;
@@ -336,7 +398,7 @@ defineExpose({ showLoginModal, closeLoginModal })
   .login-card{ padding: 14px 12px 10px; }
 }
 
-/* 登录/注册成功与错误提示（沿用全局类名，统一视觉） */
+/* 成功与错误提示 */
 .global-login-success-toast,
 .global-login-error-toast{
   position: fixed;

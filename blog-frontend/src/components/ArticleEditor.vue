@@ -132,6 +132,7 @@ import apiClient from '../utils/api'
 import { uploadImage, getImageFromClipboard, fileToBase64 } from '../utils/imageUpload'
 import Quill from 'quill'
 import 'quill/dist/quill.snow.css' // 引入 Quill 样式
+const DEFAULT_COVER = '/api/upload/cf143969-11c1-4fd7-b1c3-791c54102553.jpg'
 
 // 添加图片调整大小功能
 function addImageResizeHandlers(quill) {
@@ -325,7 +326,10 @@ onMounted(async () => {
   await nextTick()
   initQuill()
   
-  if (!isEdit.value) return
+  if (!isEdit.value) {
+    form.coverUrl = form.coverUrl || DEFAULT_COVER
+    return
+  }
   try {
     // 优先尝试 /articles/:id
     const res = await apiClient.get(`/articles/${articleId.value}`)
@@ -411,7 +415,7 @@ const save = async () => {
       author: authorName,
       tags: (form.tags || []).join(' '),
       wordCount: wordCount,
-      coverUrl: form.coverUrl || ''
+      coverUrl: (isEdit.value ? (form.coverUrl || '') : (form.coverUrl || DEFAULT_COVER))
     }
     
     console.log('保存文章:', payload) // 调试用，可以在控制台查看发送的数据

@@ -5,9 +5,19 @@
       <aside class="aside left">
         <section class="card wt-card">
           <h3>公告栏</h3>
+          <div v-if="isAdmin" class="announce-admin">
+            <textarea v-model="newAnn" class="ipt" rows="3" placeholder="输入公告内容..."></textarea>
+            <div class="actions">
+              <button class="wt-chip wt-chip--sm" @click="addAnnouncement"><i class="fas fa-plus"></i> 添加</button>
+              <button class="wt-chip wt-chip--sm" @click="saveAnnouncements"><i class="fas fa-save"></i> 保存</button>
+            </div>
+          </div>
           <div class="announce" v-for="(a,i) in announcements" :key="i">
             <div class="date">{{ a.date }}</div>
             <div class="text">{{ a.content }}</div>
+            <div class="ops" v-if="isAdmin">
+              <button class="wt-chip wt-chip--sm" @click="removeAnnouncement(i)">删除</button>
+            </div>
           </div>
         </section>
       </aside>
@@ -47,7 +57,6 @@
           <div class="stat"><span>文章总数</span><b>{{ articleCount }}</b></div>
           <div class="stat"><span>分类数量</span><b>{{ categoryCount }}</b></div>
           <div class="stat"><span>留言数量</span><b>{{ boardCommentCount }}</b></div>
-          <div class="stat"><span>总浏览量</span><b>{{ viewCount }}</b></div>
         </section>
 
         <section class="card wt-card">
@@ -70,8 +79,9 @@ import apiClient from '../utils/api'
 
 const router = useRouter()
 
-// 登录态与留言板“文章ID”
+// 登录态与角色、留言板“文章ID”
 const isLoggedIn = ref(false)
+const isAdmin = ref(false)
 const boardArticleId = 1
 
 // 公告
@@ -80,13 +90,36 @@ const announcements = ref([
   { date: '2024-01-10', content: '冬季摄影大赛开始征稿，欢迎投稿！' },
   { date: '2023-12-25', content: '祝大家圣诞快乐，网站 12/25-26 维护。' }
 ])
+const newAnn = ref('')
+const addAnnouncement = () => {
+  const txt = String(newAnn.value || '').trim()
+  if (!txt) return
+  announcements.value.unshift({ date: new Date().toISOString().slice(0,10), content: txt })
+  newAnn.value = ''
+}
+const removeAnnouncement = (i) => { if (i >= 0) announcements.value.splice(i,1) }
+const saveAnnouncements = async () => {
+  try {
+    localStorage.setItem('site_announcements', JSON.stringify(announcements.value))
+    // 可选后端保存：若无接口则忽略
+    await apiClient.post('/announcements', announcements.value, { _skipLoading: true }).catch(() => {})
+    alert('公告已保存')
+  } catch {
+    alert('公告已保存到本地')
+  }
+}
 
-// 概览与分类（后端同步）
+// 概览与分类（从文章标签统计，确保与分类页一致）
 const articleCount = ref(0)
 const categoryCount = ref(0)
-const viewCount = ref(12500)
 const categories = ref([])
 const boardCommentCount = ref(0)
+
+const normalizeTags = (v) => {
+  if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean)
+  if (!v) return []
+  return String(v).split(/[\s,，#、/|]+/).map(s => s.trim()).filter(Boolean)
+}
 
 // 来自 ArticleComments 的事件回调，用于更新统计
 const onPosted = (count) => { boardCommentCount.value = count }
@@ -95,23 +128,48 @@ const onLoaded = (count) => { boardCommentCount.value = count }
 onMounted(async () => {
   const userInfo = localStorage.getItem('user_info')
   isLoggedIn.value = !!userInfo
+  try {
+    const user = JSON.parse(userInfo || '{}')
+    const uname = String(user?.username || '').toLowerCase()
+    isAdmin.value = Boolean(
+      (user && user.isAdmin === true) ||
+      (user && (user.role === 'ADMIN' || user.role === 'ROLE_ADMIN' || user.role === 'admin')) ||
+      (Array.isArray(user?.roles) && user.roles.some(r => /admin/i.test(String(r)))) ||
+      ['admin','winter','wintertide'].includes(uname)
+    )
+  } catch {}
 
-  // 文章总数
+  // 公告（后端优先，失败则本地）
+  try {
+    const aRes = await apiClient.get('/announcements', { _skipLoading: true })
+    if (Array.isArray(aRes.data) && aRes.data.length) {
+      announcements.value = aRes.data
+    } else {
+      const saved = JSON.parse(localStorage.getItem('site_announcements') || '[]')
+      if (Array.isArray(saved) && saved.length) announcements.value = saved
+    }
+  } catch {
+    try {
+      const saved = JSON.parse(localStorage.getItem('site_announcements') || '[]')
+      if (Array.isArray(saved) && saved.length) announcements.value = saved
+    } catch {}
+  }
+
+  // 文章总数 + 分类统计（从文章标签聚合）
   try {
     const res = await apiClient.get('/articles', { _skipLoading: true })
-    articleCount.value = Array.isArray(res.data) ? res.data.length : 0
-  } catch { articleCount.value = 0 }
-
-  // 分类（需与你后端对齐字段）
-  try {
-    const tagRes = await apiClient.get('/tags', { _skipLoading: true })
-    const list = Array.isArray(tagRes.data) ? tagRes.data : []
-    categories.value = list.map(it => ({
-      name: it.name || it.tag || it.category || '未分类',
-      count: Number(it.count || it.total || 0)
-    }))
+    const arr = Array.isArray(res.data) ? res.data : []
+    articleCount.value = arr.length
+    const map = {}
+    for (const a of arr) {
+      for (const t of normalizeTags(a.tags)) {
+        map[t] = (map[t] || 0) + 1
+      }
+    }
+    categories.value = Object.entries(map).map(([name, count]) => ({ name, count }))
     categoryCount.value = categories.value.length
   } catch {
+    articleCount.value = 0
     categories.value = []
     categoryCount.value = 0
   }
@@ -122,7 +180,6 @@ onMounted(async () => {
     boardCommentCount.value = Array.isArray(cRes.data) ? cRes.data.length : 0
   } catch { boardCommentCount.value = 0 }
 })
-
 
 const goBack = () => router.back()
 </script>
@@ -230,4 +287,8 @@ label{ display:block; margin-bottom: 6px; }
   display: grid; gap: 8px; place-items: center;
 }
 .lock-box i{ font-size: 28px; }
+
+/* 公告编辑 */
+.announce-admin .actions{ margin-top: 8px; display: flex; gap: 8px; }
+.announce .ops{ margin-top: 6px; }
 </style>

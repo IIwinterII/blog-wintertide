@@ -40,6 +40,13 @@
       <i class="far fa-clock"></i>
       <p class="wt-muted">暂无文章</p>
     </section>
+    
+    <!-- 返回按钮 -->
+    <section class="back-row">
+      <button class="wt-chip" @click="router.back()">
+        <i class="fas fa-arrow-left"></i> 返回
+      </button>
+    </section>
   </main>
 </template>
 
@@ -172,5 +179,12 @@ onMounted(async () => {
 @media (max-width: 700px){
   .tl{ grid-template-columns: 90px 1fr; }
   .list li{ grid-template-columns: 46px 1fr; }
+}
+
+/* 返回按钮行 */
+.back-row {
+  margin: 14px 0;
+  display: flex;
+  justify-content: center;
 }
 </style>

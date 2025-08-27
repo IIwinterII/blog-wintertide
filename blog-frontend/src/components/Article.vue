@@ -4,7 +4,7 @@
 
   <main class="wt-reader">
     <!-- 封面 -->
-    <div v-if="article.coverUrl" class="reader-cover" :style="{ backgroundImage: 'url(' + article.coverUrl + ')' }"></div>
+    <div class="reader-cover" :style="{ backgroundImage: 'url(' + (article.coverUrl || DEFAULT_COVER) + ')' }"></div>
 
     <!-- 标题 -->
     <h1 class="reader-title">{{ article.title || '未命名文章' }}</h1>
@@ -58,6 +58,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '../utils/api'
 import ArticleComments from './ArticleComments.vue'
+const DEFAULT_COVER = '/api/upload/cf143969-11c1-4fd7-b1c3-791c54102553.jpg'
 
 const route = useRoute()
 const router = useRouter()
@@ -208,11 +209,11 @@ const loadArticle = async () => {
         publishDate: '2025-08-21',
         author: 'Winter',
         wordCount: 1200,
-        tags: ['随笔', '冬天'],
+        tags: ['未分类'],
         content: `
           <p>有些故事必须在冬天讲起，像是树枝上的霜花，只有寒冷才能雕刻它的边界。</p>
           <blockquote>“如果没有一场雪，怎么知道春天已经在路上了呢？”</blockquote>
-          <p>我们习惯在深夜里写下日记，像对话，像回声。那些轻微的、诚恳的自我倾诉，最终都会变成抵御风雪的火光。</p>
+          <p>我们习惯在深夜里写下，像对话，像回声。那些轻微的、诚恳的自我倾诉，最终都会变成抵御风雪的火光。</p>
           <pre><code>// 一段代码也可以很温暖
 function cocoa(temp = 'warm') {
   return \`A cup of \${temp} cocoa\`
@@ -260,12 +261,25 @@ onBeforeUnmount(() => {
 
 <!-- 本页微调 -->
 <style scoped>
+.wt-reader{
+  max-width: 900px;
+  margin: 120px auto 40px;
+  padding: 16px;
+  border-radius: 16px;
+  background-color: var(--wt-bg-card, #0d1b2a);
+  background-image: linear-gradient(145deg, rgba(13,27,42,0.90), rgba(13,27,42,0.74));
+  border: 1px solid rgba(207,232,255,0.24);
+  box-shadow: 0 22px 54px rgba(7,20,35,.56);
+  backdrop-filter: blur(4px);
+  color: var(--wt-fg, #e6f0ff);
+}
 .reader-cover{
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--wt-radius-md);
   background-size: cover;
   background-position: center;
+  filter: brightness(0.82) contrast(1.02);
   border: 1px solid rgba(207,232,255,0.28);
   margin-bottom: 14px;
 }
@@ -286,6 +300,12 @@ onBeforeUnmount(() => {
 
 .reader-content{
   margin-top: 10px;
+  background: rgba(7,20,35,0.78);
+  padding: 18px 18px;
+  border-radius: 12px;
+  box-shadow: inset 0 12px 28px rgba(7,20,35,.45);
+  color: var(--wt-fg, #f1f6ff);
+  line-height: 1.85;
 }
 
 .reader-tags{
@@ -331,4 +351,17 @@ onBeforeUnmount(() => {
   box-shadow: 0 16px 40px rgba(13,27,42,.32);
 }
 .fav-btn.on{ color: #e74c3c; }
+
+.reader-content h1,.reader-content h2,.reader-content h3{ color: var(--wt-fg, #f8fbff); }
+.reader-content p,.reader-content li{ color: var(--wt-fg, #eaf2ff); }
+.reader-content a{ color: var(--wt-primary, #8ec5ff); text-decoration: underline; text-underline-offset: 2px; }
+.reader-content blockquote{
+  border-left: 4px solid var(--wt-primary, #8ec5ff);
+  background: rgba(142,197,255,0.10);
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: var(--wt-fg, #eaf2ff);
+}
+.reader-content pre, .reader-content code{ background: rgba(0,0,0,.30); color: #f8f9fa; }
+.reader-content pre{ padding: 12px; border-radius: 10px; overflow: auto; }
 </style>

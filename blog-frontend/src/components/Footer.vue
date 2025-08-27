@@ -9,25 +9,25 @@
       <div class="cols">
         <section class="col">
           <h3>关于 Wintertide</h3>
-          <p>一个偏爱冰蓝与玻璃拟态的个人空间。</p>
+          <p>一个偏爱冬天与冰蓝拟态的个人技术博客。</p>
         </section>
         <section class="col">
           <h3>最新动态</h3>
-          <p>界面重构 · 更丝滑的欢迎页与日/夜模式。</p>
+          <p>界面重构，版本构成。</p>
         </section>
         <section class="col">
           <h3>联系</h3>
-          <p>Email: contact@wintertide.com</p>
+          <p>Email: 2488475799@qq.com</p>
         </section>
       </div>
 
       <nav class="links">
-        <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://gitee.com/" target="_blank" rel="noopener">Gitee</a>
+        <a href="https://github.com/IIwinterII/blog-wintertide" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://gitee.com/lwinterl" target="_blank" rel="noopener">Gitee</a>
         <router-link :to="{ name: 'Comments' }">留言</router-link>
       </nav>
 
-      <div class="copy wt-muted">© {{ new Date().getFullYear() }} Winter.</div>
+      <div class="copy wt-muted">© {{ new Date().getFullYear() }} Wintertide</div>
     </div>
   </footer>
 </template>

@@ -84,12 +84,26 @@
         </article>
       </div>
 
+      <!-- 加载更多按钮 -->
+      <div v-if="hasMoreArticles" class="load-more-container">
+        <button class="load-more-btn wt-card wt-card--icecut" @click="loadMoreArticles">
+          <i class="fas fa-arrow-down"></i> 加载更多
+        </button>
+      </div>
+
       <!-- 无数据占位 -->
       <div v-if="!loading && displayArticles.length === 0" class="empty">
         <div class="wt-card empty-card">
           <i class="far fa-snowflake"></i>
           <p>这里暂时还没有内容</p>
         </div>
+      </div>
+      
+      <!-- 搜索结果返回按钮 -->
+      <div v-if="searchKeyword" class="back-row">
+        <button class="wt-chip" @click="clearSearchAndBack">
+          <i class="fas fa-arrow-left"></i> 返回
+        </button>
       </div>
     </section>
   </div>
@@ -107,6 +121,9 @@ const loading = ref(true)
 const activeSegment = ref('latest')
 const selectedTag = ref(null)
 const searchKeyword = ref('')
+const currentPage = ref(1)
+const pageSize = ref(9) // 每页显示9个文章卡片
+const hasMoreArticles = ref(true) // 是否还有更多文章可加载
 
 // 归一化 tags
 const normalizeTags = (tags) => {
@@ -130,7 +147,8 @@ const containsKw = (a, kw) => {
   return fields.some(v => String(v || '').toLowerCase().includes(k))
 }
 
-const displayArticles = computed(() => {
+// 过滤和排序后的所有文章
+const filteredArticles = computed(() => {
   let arr = [...articles.value]
 
   // 标签过滤
@@ -154,6 +172,26 @@ const displayArticles = computed(() => {
   return arr
 })
 
+// 当前页显示的文章
+const displayArticles = computed(() => {
+  const startIndex = 0
+  const endIndex = currentPage.value * pageSize.value
+  return filteredArticles.value.slice(startIndex, endIndex)
+})
+
+// 检查是否还有更多文章可加载
+const checkMoreArticles = () => {
+  hasMoreArticles.value = displayArticles.value.length < filteredArticles.value.length
+}
+
+// 加载更多文章
+const loadMoreArticles = () => {
+  if (hasMoreArticles.value) {
+    currentPage.value++
+    checkMoreArticles()
+  }
+}
+
 const gotoArticle = (a) => {
   router.push({ name: 'Article', params: { id: a.id } })
 }
@@ -163,25 +201,44 @@ const setSegment = (seg) => {
   if (seg !== 'category') {
     selectedTag.value = null
   }
+  // 重置分页
+  currentPage.value = 1
+  checkMoreArticles()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const filterByTag = (tag) => {
   selectedTag.value = tag
   activeSegment.value = 'all'
+  // 重置分页
+  currentPage.value = 1
+  checkMoreArticles()
 }
 
 const onFilterTag = (e) => {
   selectedTag.value = e.detail
   activeSegment.value = 'all'
+  // 重置分页
+  currentPage.value = 1
+  checkMoreArticles()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const onSearch = (e) => {
   searchKeyword.value = String(e.detail || '').trim()
   activeSegment.value = 'all'
+  // 重置分页
+  currentPage.value = 1
+  checkMoreArticles()
   // 定位到列表
   location.hash = 'list'
+}
+
+const clearSearchAndBack = () => {
+  searchKeyword.value = ''
+  currentPage.value = 1
+  checkMoreArticles()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const onWheelTopToWelcome = (e) => {
@@ -211,6 +268,7 @@ onMounted(async () => {
         ...a,
         tags: normalizeTags(a.tags),
       }))
+    checkMoreArticles()
   } catch (e) {
     console.error('加载文章失败:', e)
     articles.value = [
@@ -235,6 +293,7 @@ onMounted(async () => {
         coverUrl: '',
       },
     ]
+    checkMoreArticles()
   } finally {
     loading.value = false
   }
@@ -412,5 +471,41 @@ onUnmounted(() => {
 .empty-card i {
   font-size: 28px;
   margin-bottom: 8px;
+}
+
+/* 加载更多按钮 */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.load-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
+  color: #e6f0ff;
+  cursor: pointer;
+  transition: transform 0.25s ease, background 0.25s ease;
+  border: 1px solid rgba(207, 232, 255, 0.35);
+}
+
+.load-more-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10));
+}
+
+.load-more-btn i {
+  font-size: 14px;
+}
+
+/* 返回按钮行 */
+.back-row {
+  margin: 24px 0;
+  display: flex;
+  justify-content: center;
 }
 </style>

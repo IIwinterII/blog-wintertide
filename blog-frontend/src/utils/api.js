@@ -1,12 +1,13 @@
 import axios from 'axios'
 
-// 创建 Axios 实例（保留对 /api 的代理）
+// ========= 基础配置 =========
+const BASE_URL = import.meta?.env?.VITE_API_BASE || '/api'
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: BASE_URL,
   timeout: 15000
 })
 
-// ===== 全局轻量加载指示（自动挂到 body，不被导航遮挡） =====
+// ========= 全局轻量加载指示（自动挂到 body，不被导航遮挡） =========
 let activeRequests = 0
 let overlayEl = null
 let styleEl = null
@@ -34,35 +35,65 @@ function ensureOverlay() {
     document.body.appendChild(overlayEl)
   }
 }
+function showLoading() { ensureOverlay(); overlayEl.classList.add('active') }
+function hideLoading() { if (!overlayEl) return; if (activeRequests <= 0) overlayEl.classList.remove('active') }
 
-function showLoading() {
-  ensureOverlay()
-  overlayEl.classList.add('active')
+// ========= ETag/Last-Modified 简易缓存 =========
+const CACHE_PREFIX = 'wt_api_cache:'
+function serializeParams(params) {
+  if (!params) return ''
+  try { return JSON.stringify(params) } catch { return String(params) }
+}
+function makeCacheKey(config) {
+  const url = (config.baseURL || '') + (config.url || '')
+  const qs = serializeParams(config.params)
+  return `${config.method || 'get'} ${url} ${qs}`
+}
+function getCache(k) {
+  try {
+    const body = localStorage.getItem(CACHE_PREFIX + 'body:' + k)
+    const meta = JSON.parse(localStorage.getItem(CACHE_PREFIX + 'meta:' + k) || 'null')
+    return { body: body ? JSON.parse(body) : null, meta }
+  } catch { return { body: null, meta: null } }
+}
+function setCache(k, data, etag, lastMod) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + 'body:' + k, JSON.stringify(data))
+    localStorage.setItem(CACHE_PREFIX + 'meta:' + k, JSON.stringify({ etag, lastMod, t: Date.now() }))
+  } catch {}
 }
 
-function hideLoading() {
-  if (!overlayEl) return
-  if (activeRequests <= 0) {
-    overlayEl.classList.remove('active')
-  }
-}
-
-// 请求拦截：默认显示加载，支持跳过
+// ========= 请求拦截 =========
 apiClient.interceptors.request.use(
   (config) => {
-    const skip =
-      config._skipLoading === true ||
+    // Loading
+    const skip = config._skipLoading === true ||
       (config.headers && (config.headers['X-Skip-Loading'] === '1' || config.headers['x-skip-loading'] === '1'))
-    if (!skip) {
-      activeRequests++
-      showLoading()
+    if (!skip) { activeRequests++; showLoading() }
+
+    // Authorization
+    try {
+      const u = JSON.parse(localStorage.getItem('user_info') || '{}')
+      if (u?.token) {
+        config.headers = config.headers || {}
+        config.headers.Authorization = `Bearer ${u.token}`
+      }
+    } catch {}
+
+    // 条件请求（GET）
+    if ((config.method || 'get').toLowerCase() === 'get') {
+      const key = makeCacheKey(config)
+      const { meta } = getCache(key)
+      config.headers = config.headers || {}
+      if (meta?.etag) config.headers['If-None-Match'] = meta.etag
+      if (meta?.lastMod) config.headers['If-Modified-Since'] = meta.lastMod
     }
     return config
   },
   (error) => Promise.reject(error)
 )
 
-// 响应拦截：并发计数归零时隐藏加载
+// ========= 响应拦截 =========
 const finalize = () => {
   if (activeRequests > 0) activeRequests--
   if (activeRequests === 0) hideLoading()
@@ -70,6 +101,24 @@ const finalize = () => {
 
 apiClient.interceptors.response.use(
   (response) => {
+    try {
+      // ETag/Last-Modified 缓存写入与 304 回退
+      const method = (response.config?.method || 'get').toLowerCase()
+      const key = makeCacheKey(response.config || {})
+      if (method === 'get') {
+        if (response.status === 200) {
+          const etag = response.headers?.etag
+          const lastMod = response.headers?.['last-modified']
+          setCache(key, response.data, etag, lastMod)
+        } else if (response.status === 304) {
+          const { body } = getCache(key)
+          if (body != null) {
+            // 用缓存数据回退为 200
+            response = { ...response, status: 200, data: body }
+          }
+        }
+      }
+    } catch {}
     finalize()
     return response
   },
@@ -79,8 +128,7 @@ apiClient.interceptors.response.use(
   }
 )
 
-// ===== 兼容旧代码的命名导出（恢复 addComment 等） =====
-
+// ========= 命名导出（兼容旧代码） =========
 // 文章
 export const getArticles = (params) => apiClient.get('/articles', { params })
 export const getArticleById = (id) => apiClient.get(`/articles/${id}`)
@@ -90,40 +138,36 @@ export const deleteArticle = (id) => apiClient.delete(`/articles/${id}`)
 
 // 评论
 export const getCommentsByArticleId = (articleId) => apiClient.get(`/comments/article/${articleId}`)
-// 兼容 ArticleComments.vue 引用的 addComment(data) 或 addComment(articleId, content, author)
+// 兼容 ArticleComments.vue 引用的 addComment
 export const addComment = (arg1, arg2, arg3) => {
-  // 兼容两种签名：
-  // 1) addComment({ articleId, content, username, userId, author? })
-  // 2) addComment(articleId, content, username?)
   let payload
   if (typeof arg1 === 'object' && arg1) {
     payload = { articleId: arg1.articleId, content: arg1.content }
-    // 首选使用 username/userId
     if (arg1.username) payload.username = arg1.username
     if (arg1.userId != null) payload.userId = arg1.userId
-    // 兼容旧字段 author → username
+    if (arg1.nickname) payload.nickname = arg1.nickname
     if (!payload.username && arg1.author) payload.username = arg1.author
   } else {
     payload = { articleId: arg1, content: arg2 }
     if (arg3) payload.username = arg3
   }
-  // 若缺少登录信息，尝试从本地存储补齐
   if (!payload.username || payload.userId == null) {
     try {
       const user = JSON.parse(localStorage.getItem('user_info') || '{}')
-      if (!payload.username && user && user.username) payload.username = user.username
-      if (payload.userId == null && user && (user.id != null)) payload.userId = user.id
+      if (!payload.username && user?.username) payload.username = user.username
+      if (payload.userId == null && (user?.id != null)) payload.userId = user.id
+      if (!payload.nickname && user?.nickname) payload.nickname = user.nickname
     } catch {}
   }
   return apiClient.post('/comments', payload)
 }
 
-// 标签（若有）
+// 标签
 export const getTags = () => apiClient.get('/tags')
 
-// 认证（若有登录注册接口）
+// 认证（若存在）
 export const login = (data) => apiClient.post('/auth/login', data)
 export const register = (data) => apiClient.post('/auth/register', data)
 
-// 默认导出 axios 实例，供需要自定义请求的地方使用
+// 默认导出 axios 实例
 export default apiClient

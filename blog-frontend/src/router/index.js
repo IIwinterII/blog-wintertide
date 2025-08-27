@@ -8,7 +8,6 @@ import ArticleEditor from '../components/ArticleEditor.vue'
 import CategoryPage from '../components/CategoryPage.vue'
 import ArchivePage from '../components/ArchivePage.vue'
 import LoginComponent from '../components/LoginComponent.vue'
-import DebugPage from '../components/DebugPage.vue'
 
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
@@ -21,7 +20,6 @@ const routes = [
   { path: '/archive', name: 'Archive', component: ArchivePage },
   { path: '/categories', name: 'Category', component: CategoryPage },
   { path: '/categories/:tag', name: 'CategoryByTag', component: CategoryPage },
-  { path: '/debug', name: 'Debug', component: DebugPage }
 ]
 
 const router = createRouter({

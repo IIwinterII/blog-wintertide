@@ -10,7 +10,7 @@
 
     <section class="section wt-card">
       <h3 class="sec-title"><i class="fas fa-book"></i> 我的文章</h3>
-      <div v-if="articles.length" class="grid">
+      <div class="grid">
         <article
           v-for="a in articles"
           :key="a.id"
@@ -35,7 +35,7 @@
         </div>
 
       </div>
-      <p v-else class="empty wt-muted">暂无文章</p>
+      <p v-if="!articles.length" class="empty wt-muted">暂无文章</p>
     </section>
 
     <section class="section wt-card">
@@ -192,8 +192,20 @@ onMounted(() => {
     const user = JSON.parse(userInfo);
     username.value = user.username || '用户';
     bio.value = user.bio || '这是用户的个人简介';
-    isAdmin.value = user.username === 'admin';
-    loadUserData();
+    const uname = String(user?.username || '').toLowerCase();
+    isAdmin.value = Boolean(
+      (user && (user.isAdmin === true)) ||
+      (user && (user.role === 'ADMIN' || user.role === 'ROLE_ADMIN' || user.role === 'admin')) ||
+      (Array.isArray(user?.roles) && user.roles.some(r => /admin/i.test(String(r)))) ||
+      ['admin','winter','wintertide'].includes(uname)
+    );
+    if (isAdmin.value) {
+      loadUserData();
+    } else {
+      articles.value = [];
+    }
+  } else {
+    articles.value = [];
   }
 
   window.addEventListener('click', onGlobalClick, { passive: true });
@@ -223,6 +235,7 @@ const navigateToEditor = (articleId = null) => {
 };
 
 const loadUserData = async () => {
+  if (!isAdmin.value) { articles.value = []; return; }
   try {
     const response = await axios.get('/api/articles');
     // 过滤掉隐藏文章（id === 1 不显示）
@@ -230,9 +243,7 @@ const loadUserData = async () => {
     articles.value = list.filter(it => String(it.id) !== '1');
   } catch (error) {
     console.error('加载文章失败:', error);
-    articles.value = [
-      { id: 2, title: '我的第一篇文章', summary: '测试文章' }
-    ];
+    articles.value = [];
   }
 };
 

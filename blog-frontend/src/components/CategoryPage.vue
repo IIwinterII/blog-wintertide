@@ -76,10 +76,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import apiClient from '../utils/api'
 
 const router = useRouter()
+const route = useRoute()
+
 const tags = ref([])
 const activeTag = ref(null)
 const articles = ref([])
@@ -92,19 +94,6 @@ const normalizeTags = (v) => {
 }
 const unique = (arr) => Array.from(new Set(arr))
 
-const fetchTags = async () => {
-  try {
-    const res = await apiClient.get('/tags')
-    const arr = Array.isArray(res.data) ? res.data : []
-    const names = arr.map(x => x?.name ?? x?.tagName ?? x?.title ?? x)
-                    .map(s => String(s).trim())
-                    .filter(Boolean)
-    tags.value = unique(names)
-  } catch (e) {
-    console.error('加载标签失败：', e)
-    tags.value = ['随笔', '生活', '技术', '想法']
-  }
-}
 const fetchArticles = async () => {
   try {
     const res = await apiClient.get('/articles')
@@ -115,6 +104,9 @@ const fetchArticles = async () => {
         ...a,
         tags: normalizeTags(a.tags)
       }))
+    // 从文章生成标签，确保分类与文章对齐
+    const allTags = articles.value.flatMap(a => a.tags || [])
+    tags.value = unique(allTags).filter(Boolean)
   } catch (e) {
     console.error('加载文章失败：', e)
     // 回退示例
@@ -125,7 +117,7 @@ const fetchArticles = async () => {
         summary: '窗外的光像是从湖面上反弹回来。',
         publishDate: '2025-08-20',
         wordCount: 900,
-        tags: ['随笔'],
+        tags: ['未分类'],
         coverUrl: ''
       },
       {
@@ -134,10 +126,12 @@ const fetchArticles = async () => {
         summary: '冬夜更需要一盏灯。',
         publishDate: '2025-08-22',
         wordCount: 1200,
-        tags: ['想法', '生活'],
+        tags: ['未分类'],
         coverUrl: ''
       }
     ]
+    const allTags = articles.value.flatMap(a => a.tags || [])
+    tags.value = unique(allTags).filter(Boolean)
   }
 }
 
@@ -157,7 +151,14 @@ const gotoArticle = (a) => {
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([fetchTags(), fetchArticles()])
+  await fetchArticles()
+  // 路由参数预选标签（/categories/:tag）
+  const initial = route.params.tag ? String(route.params.tag) : null
+  if (initial && tags.value.includes(initial)) {
+    activeTag.value = initial
+  } else if (initial && !tags.value.includes(initial)) {
+    activeTag.value = null
+  }
   loading.value = false
 })
 </script>
