@@ -17,7 +17,13 @@
     </div>
 
     <!-- 正文（优先 content，其次 description/summary） -->
-    <article class="reader-content">
+    <div class="format-tools">
+      <button class="wt-chip wt-chip--sm" @click="toggleCenter">
+        <i :class="isCenter ? 'fas fa-align-left' : 'fas fa-align-center'"></i>
+        {{ isCenter ? '左对齐' : '居中对齐' }}
+      </button>
+    </div>
+    <article class="reader-content" :class="{ 'is-center': isCenter }">
       <div v-if="article.content" v-html="article.content"></div>
       <template v-else>
         <p class="wt-muted">{{ article.description || article.summary || '这篇文章还没有正文内容。' }}</p>
@@ -70,6 +76,8 @@ const articleId = computed(() => {
 })
 
 const article = ref({})
+const isCenter = ref(false)
+const toggleCenter = () => { isCenter.value = !isCenter.value }
 
 const normalizeTags = (tags) => {
   if (Array.isArray(tags)) return tags.filter(Boolean)
@@ -306,6 +314,20 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 12px 28px rgba(7,20,35,.45);
   color: var(--wt-fg, #f1f6ff);
   line-height: 1.85;
+  text-align: left; /* 默认左对齐 */
+}
+.format-tools{
+  display: flex; justify-content: flex-end; margin: 6px 0 4px;
+}
+.reader-content p{
+  text-align: left;
+  text-indent: 2em;    /* 首行缩进两字符 */
+  margin: 0.6em 0;
+}
+.reader-content.is-center { text-align: center; }
+.reader-content.is-center p{
+  text-align: center;
+  text-indent: 0;      /* 居中时不缩进 */
 }
 
 .reader-tags{

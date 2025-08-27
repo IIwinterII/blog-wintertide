@@ -23,7 +23,7 @@
 
       <nav class="links">
         <a href="https://github.com/IIwinterII/blog-wintertide" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://gitee.com/lwinterl" target="_blank" rel="noopener">Gitee</a>
+        <a href="https://gitee.com/lwinterl/blog-wintertide" target="_blank" rel="noopener">Gitee</a>
         <router-link :to="{ name: 'Comments' }">留言</router-link>
       </nav>
 
