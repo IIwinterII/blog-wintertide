@@ -2,13 +2,15 @@ cd D:\blog-wintertide
 # 重新初始化本地仓库
 rm -rf .git
 git init
+git branch
+git checkout main
 
 # 添加所有文件
 git add .
-
+git push -f origin main:bagin
 # 提交更改（使用正确的分支名称）
-git checkout -b main
-git commit -m "前后端项目提交，评论完成，逻辑优化"
+git checkout -b master
+git commit -m "前后端项目提交，布置上云"
 
 # 设置远程仓库（使用图片中显示的 blog-wintertide）
 git remote add origin https://gitee.com/lwinterl/blog-wintertide.git
@@ -19,6 +21,13 @@ git push -f origin master
 
 
 
+
+
+
+git remote add github https://github.com/IIwinterII/blog-wintertide.git
+
+# 推送本地 main 分支到 GitHub 远程的 main 分支
+git push github main
 
 
 
