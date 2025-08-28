@@ -2,17 +2,19 @@
 rm -rf .git
 cd D:\blog-wintertide
 git init
-
+ git stash
 # 添加所有文件
 git add .
-
+git switch main
+git switch master
 # 提交更改（使用正确的分支名称）
 git checkout -b main
-git commit -m "前后端提交，增删改查ok"
+git commit -m "竣工，后续可更新版本"
+git push -f origin main:master
 
 # 设置远程仓库（使用图片中显示的 blog-wintertide）
 git remote add origin https://gitee.com/lwinterl/blog-wintertide.git
-
+git push -f origin main:master
 # 强制推送
 git push -f origin main
 git push -f origin master
@@ -20,7 +22,10 @@ git push -f origin master
 
 
 
+git add blog-backend/gitee
 
+# 提交到当前 main 分支
+git commit -m "提交 blog-backend/gitee 的修改"
 
 
 
