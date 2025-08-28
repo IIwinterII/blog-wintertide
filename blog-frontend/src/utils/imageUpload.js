@@ -98,9 +98,6 @@ export const uploadImage = async (file) => {
     
     // 调用后端上传接口
     const response = await apiClient.post('/upload/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
       timeout: 30000 // 增加超时时间到30秒
     });
     

@@ -38,8 +38,7 @@
         class="wt-card wt-card--hover card"
         @click="gotoArticle(a)"
       >
-        <div v-if="a.coverUrl" class="cover" :style="{ backgroundImage: `url(${a.coverUrl})` }"></div>
-        <div v-else class="cover placeholder"></div>
+        <div class="cover" :style="{ backgroundImage: `url(${a.coverUrl || DEFAULT_COVER})` }"></div>
 
         <h3 class="title">{{ a.title }}</h3>
         <p class="desc">{{ a.summary || a.description || '点击查看详情' }}</p>
@@ -78,6 +77,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import apiClient from '../utils/api'
+
+const DEFAULT_COVER = '/default-cover.jpg'
 
 const router = useRouter()
 const route = useRoute()

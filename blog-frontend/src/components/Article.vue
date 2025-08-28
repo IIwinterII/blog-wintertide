@@ -1,4 +1,5 @@
 <template>
+  <div class="article-page">
   <!-- 阅读进度条 -->
   <div id="read-progress"></div>
 
@@ -57,6 +58,7 @@
   <section class="comments-wrap">
     <ArticleComments :key="articleId" :articleId="articleId" />
   </section>
+  </div>
 </template>
 
 <script setup>
@@ -64,7 +66,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '../utils/api'
 import ArticleComments from './ArticleComments.vue'
-const DEFAULT_COVER = '/api/upload/cf143969-11c1-4fd7-b1c3-791c54102553.jpg'
+const DEFAULT_COVER = '/default-cover.jpg'
 
 const route = useRoute()
 const router = useRouter()
@@ -308,7 +310,7 @@ onBeforeUnmount(() => {
 
 .reader-content{
   margin-top: 10px;
-  background: rgba(7,20,35,0.78);
+  background: rgba(21, 21, 21, 0.78);
   padding: 18px 18px;
   border-radius: 12px;
   box-shadow: inset 0 12px 28px rgba(7,20,35,.45);
@@ -379,11 +381,53 @@ onBeforeUnmount(() => {
 .reader-content a{ color: var(--wt-primary, #8ec5ff); text-decoration: underline; text-underline-offset: 2px; }
 .reader-content blockquote{
   border-left: 4px solid var(--wt-primary, #8ec5ff);
-  background: rgba(142,197,255,0.10);
+  background: rgba(241, 244, 248, 0.1);
   padding: 10px 14px;
   border-radius: 8px;
   color: var(--wt-fg, #eaf2ff);
 }
 .reader-content pre, .reader-content code{ background: rgba(0,0,0,.30); color: #f8f9fa; }
 .reader-content pre{ padding: 12px; border-radius: 10px; overflow: auto; }
+.reader-content { word-break: break-word; overflow-wrap: anywhere; }
+.reader-content pre,
+.reader-content .ql-syntax,
+.reader-content pre code {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow-x: visible;
+}
+
+/* Tables in reader: white borders + dark background (works with scoped via :deep) */
+:deep(.reader-content .wt-table) {
+  border: 1px solid rgba(255,255,255,0.45);
+  background: rgba(211, 221, 232, 0.6);
+  border-radius: 8px;
+}
+:deep(.reader-content .wt-table td),
+:deep(.reader-content .wt-table th) {
+  border: 1px solid rgba(255,255,255,0.55);
+  color: #e6f0ff;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+:deep(.reader-content .wt-table tr:nth-child(odd) td) {
+  background: rgba(142,197,255,0.06);
+}
+/* Fallback: legacy tables without wt-table class */
+:deep(.reader-content table:not(.wt-table)) {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid rgba(255,255,255,0.45);
+  background: linear-gradient(145deg, #0d1b2a, #0b1624);
+  border-radius: 8px;
+  overflow: hidden;
+}
+:deep(.reader-content table:not(.wt-table) td),
+:deep(.reader-content table:not(.wt-table) th) {
+  border: 1px solid rgba(255,255,255,0.55);
+  color: #e6f0ff;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 </style>
